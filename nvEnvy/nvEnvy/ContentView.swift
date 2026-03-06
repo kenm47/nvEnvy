@@ -3,6 +3,9 @@ import NvEnvyCore
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
+    @State private var showTagEditor = false
+    @State private var showDeleteConfirmation = false
+    @State private var noteToDelete: Note.ID?
 
     var body: some View {
         Group {
@@ -10,6 +13,35 @@ struct ContentView: View {
                 MainView()
             } else {
                 FolderPickerPrompt()
+            }
+        }
+        .sheet(isPresented: $showTagEditor) {
+            if let id = appState.selectedNoteID {
+                TagEditorPanel(noteID: id, isPresented: $showTagEditor)
+                    .environment(appState)
+            }
+        }
+        .alert("Delete Note?", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                if let id = noteToDelete {
+                    appState.deleteNote(noteID: id)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let id = noteToDelete, let note = appState.note(for: id) {
+                Text("Are you sure you want to delete \"\(note.title)\"? This cannot be undone.")
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nvEnvyShowTagEditor)) { _ in
+            if appState.selectedNoteID != nil {
+                showTagEditor = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nvEnvyConfirmDeleteNote)) { notification in
+            if let id = notification.object as? Note.ID {
+                noteToDelete = id
+                showDeleteConfirmation = true
             }
         }
     }

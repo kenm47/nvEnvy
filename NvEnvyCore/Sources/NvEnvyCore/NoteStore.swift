@@ -47,6 +47,14 @@ public actor NoteStore {
         markDirty(noteID)
     }
 
+    public func updateTags(noteID: UUID, tags: [String]) {
+        guard let note = notes[noteID] else { return }
+        note.tags = tags
+        note.modifiedDate = Date()
+        note.invalidateSearchCache()
+        markDirty(noteID)
+    }
+
     public func updateTitle(noteID: UUID, title: String) async throws {
         guard let note = notes[noteID] else { return }
         let oldFilename = note.filename
