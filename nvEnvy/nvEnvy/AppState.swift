@@ -116,6 +116,10 @@ public final class AppState {
         return Array(Set(tagSets)).sorted()
     }
 
+    // Snapback stack for URL navigation
+    public var snapbackStack: [Note.ID] = []
+    public var hasSnapback: Bool { !snapbackStack.isEmpty }
+
     private var noteStore: NoteStore?
     private var storageService: FileStorageService?
     private var searchEngine = SearchEngine()
@@ -359,6 +363,9 @@ public final class AppState {
     // MARK: - Wikilink Navigation
 
     public func navigateToWikilink(title: String) {
+        if let current = selectedNoteID {
+            snapbackStack.append(current)
+        }
         let lowerTitle = title.lowercased()
         if let match = allNotes.first(where: { $0.cachedLowercaseTitle == lowerTitle }) {
             selectedNoteID = match.id
@@ -397,7 +404,11 @@ public final class AppState {
     }
 
     public func deselectNote() {
-        selectedNoteID = nil
+        if hasSnapback {
+            snapback()
+        } else {
+            selectedNoteID = nil
+        }
     }
 
     // MARK: - File System Reconciliation
@@ -545,6 +556,55 @@ public final class AppState {
         let link = "nvenvy://find/\(encoded)"
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(link, forType: .string)
+    }
+
+    // MARK: - URL Scheme
+
+    public func handleURL(_ url: URL) {
+        guard let action = URLSchemeHandler.parse(url) else { return }
+
+        switch action.kind {
+        case .find(let searchTerm, let noteID):
+            // Push current note onto snapback stack
+            if let current = selectedNoteID {
+                snapbackStack.append(current)
+            }
+
+            if let noteID, let match = allNotes.first(where: { $0.id == noteID }) {
+                selectedNoteID = match.id
+                searchQuery = ""
+                filteredNotes = allNotes
+            } else if !searchTerm.isEmpty {
+                searchQuery = searchTerm
+                if let match = searchEngine.exactTitleMatch(notes: allNotes, query: searchTerm) {
+                    selectedNoteID = match.id
+                }
+            }
+
+            NSApp.activate(ignoringOtherApps: true)
+
+        case .make(let title, let body, let tags):
+            let noteTitle = title ?? "Untitled"
+            Task {
+                guard let store = noteStore else { return }
+                let note = try await store.addImportedNote(
+                    title: noteTitle,
+                    body: body ?? "",
+                    tags: tags
+                )
+                allNotes.append(note)
+                performSearch()
+                selectedNoteID = note.id
+            }
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    public func snapback() {
+        guard let previousID = snapbackStack.popLast() else { return }
+        selectedNoteID = previousID
+        searchQuery = ""
+        filteredNotes = allNotes
     }
 
     // MARK: - Flush on quit

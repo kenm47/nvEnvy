@@ -20,6 +20,14 @@ targets:
   nvEnvy:
     type: application
     platform: macOS
+    info:
+      path: nvEnvy/Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: nvEnvy URL Scheme
+            CFBundleURLSchemes:
+              - nvenvy
+              - nv
     sources:
       - nvEnvy
     settings:

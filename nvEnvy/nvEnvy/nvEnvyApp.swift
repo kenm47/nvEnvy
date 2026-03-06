@@ -15,6 +15,9 @@ struct nvEnvyApp: App {
                 .onAppear {
                     delegate.appState = appState
                 }
+                .onOpenURL { url in
+                    appState.handleURL(url)
+                }
         }
         .windowStyle(.titleBar)
         .defaultSize(width: 900, height: 600)
