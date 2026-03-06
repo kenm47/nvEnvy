@@ -188,6 +188,27 @@ struct nvEnvyCommands: Commands {
             }
             .keyboardShortcut("d", modifiers: .command)
         }
+
+        CommandMenu("Bookmarks") {
+            Button("Save Bookmark") {
+                appState.saveBookmark()
+            }
+            .keyboardShortcut("s", modifiers: .command)
+
+            Button("Show Bookmarks") {
+                NotificationCenter.default.post(name: .nvEnvyShowBookmarks, object: nil)
+            }
+            .keyboardShortcut("0", modifiers: .command)
+
+            Divider()
+
+            ForEach(Array(appState.bookmarkStore.bookmarks.prefix(9).enumerated()), id: \.element.id) { index, bookmark in
+                Button(bookmark.name) {
+                    appState.restoreBookmark(index: index)
+                }
+                .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+            }
+        }
     }
 
     private func postFormattingCommand(_ command: FormattingCommand) {
@@ -204,6 +225,7 @@ extension Notification.Name {
     static let nvEnvyShowTagEditor = Notification.Name("nvEnvyShowTagEditor")
     static let nvEnvyPasteAsMarkdownLink = Notification.Name("nvEnvyPasteAsMarkdownLink")
     static let nvEnvyNoExternalEditor = Notification.Name("nvEnvyNoExternalEditor")
+    static let nvEnvyShowBookmarks = Notification.Name("nvEnvyShowBookmarks")
 }
 
 // MARK: - App Delegate

@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var showTagEditor = false
     @State private var showDeleteConfirmation = false
     @State private var showNoEditorAlert = false
+    @State private var showBookmarks = false
     @State private var noteToDelete: Note.ID?
 
     var body: some View {
@@ -47,6 +48,13 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .nvEnvyNoExternalEditor)) { _ in
             showNoEditorAlert = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nvEnvyShowBookmarks)) { _ in
+            showBookmarks = true
+        }
+        .sheet(isPresented: $showBookmarks) {
+            BookmarkListView(isPresented: $showBookmarks)
+                .environment(appState)
         }
         .alert("No External Editor", isPresented: $showNoEditorAlert) {
             Button("Open Preferences") {

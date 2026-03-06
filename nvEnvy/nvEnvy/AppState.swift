@@ -120,6 +120,9 @@ public final class AppState {
     public var snapbackStack: [Note.ID] = []
     public var hasSnapback: Bool { !snapbackStack.isEmpty }
 
+    // Bookmarks
+    public var bookmarkStore = BookmarkStore()
+
     private var noteStore: NoteStore?
     private var storageService: FileStorageService?
     private var searchEngine = SearchEngine()
@@ -577,6 +580,23 @@ public final class AppState {
         let link = "nvenvy://find/\(encoded)"
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(link, forType: .string)
+    }
+
+    // MARK: - Bookmarks
+
+    public func saveBookmark() {
+        let name = searchQuery.isEmpty ? "Bookmark \(bookmarkStore.bookmarks.count + 1)" : searchQuery
+        let bookmark = Bookmark(name: name, searchQuery: searchQuery, noteID: selectedNoteID)
+        bookmarkStore.add(bookmark)
+    }
+
+    public func restoreBookmark(index: Int) {
+        guard let bookmark = bookmarkStore.bookmark(at: index) else { return }
+        searchQuery = bookmark.searchQuery
+        if let noteID = bookmark.noteID,
+           allNotes.contains(where: { $0.id == noteID }) {
+            selectedNoteID = noteID
+        }
     }
 
     // MARK: - URL Scheme
