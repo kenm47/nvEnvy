@@ -139,6 +139,15 @@ struct nvEnvyCommands: Commands {
         }
 
         CommandMenu("Notes") {
+            Button("Open in External Editor") {
+                if let id = appState.selectedNoteID {
+                    appState.openInExternalEditor(noteID: id)
+                }
+            }
+            .disabled(appState.selectedNoteID == nil)
+
+            Divider()
+
             Button("Tag Note...") {
                 NotificationCenter.default.post(name: .nvEnvyShowTagEditor, object: nil)
             }
@@ -194,6 +203,7 @@ extension Notification.Name {
     static let nvEnvyFormatting = Notification.Name("nvEnvyFormatting")
     static let nvEnvyShowTagEditor = Notification.Name("nvEnvyShowTagEditor")
     static let nvEnvyPasteAsMarkdownLink = Notification.Name("nvEnvyPasteAsMarkdownLink")
+    static let nvEnvyNoExternalEditor = Notification.Name("nvEnvyNoExternalEditor")
 }
 
 // MARK: - App Delegate

@@ -5,6 +5,7 @@ struct ContentView: View {
     @Environment(AppState.self) private var appState
     @State private var showTagEditor = false
     @State private var showDeleteConfirmation = false
+    @State private var showNoEditorAlert = false
     @State private var noteToDelete: Note.ID?
 
     var body: some View {
@@ -43,6 +44,17 @@ struct ContentView: View {
                 noteToDelete = id
                 showDeleteConfirmation = true
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nvEnvyNoExternalEditor)) { _ in
+            showNoEditorAlert = true
+        }
+        .alert("No External Editor", isPresented: $showNoEditorAlert) {
+            Button("Open Preferences") {
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("No external editor is configured. Set one in Preferences > General.")
         }
     }
 }

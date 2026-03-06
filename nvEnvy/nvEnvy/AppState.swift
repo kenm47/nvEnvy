@@ -428,6 +428,27 @@ public final class AppState {
         try? (fileURL as NSURL).setResourceValue(note.tags, forKey: .tagNamesKey)
     }
 
+    // MARK: - External Editor
+
+    public func openInExternalEditor(noteID: UUID) {
+        guard let note = note(for: noteID),
+              let folderURL = notesFolderURL else { return }
+
+        guard let editorPath = externalEditorPath else {
+            NotificationCenter.default.post(name: .nvEnvyNoExternalEditor, object: nil)
+            return
+        }
+
+        let fileURL = folderURL.appendingPathComponent(note.filename + ".md")
+        let editorURL = URL(fileURLWithPath: editorPath)
+
+        NSWorkspace.shared.open(
+            [fileURL],
+            withApplicationAt: editorURL,
+            configuration: NSWorkspace.OpenConfiguration()
+        )
+    }
+
     // MARK: - Font
 
     public func setEditorFont(_ font: NSFont) {
