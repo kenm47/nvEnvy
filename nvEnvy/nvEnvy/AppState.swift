@@ -263,6 +263,9 @@ public final class AppState {
     // MARK: - Folder Management
 
     public func setNotesFolder(_ url: URL) {
+        // Stop accessing old folder if any
+        notesFolderURL?.stopAccessingSecurityScopedResource()
+
         do {
             let bookmark = try url.bookmarkData(
                 options: .withSecurityScope,
@@ -271,9 +274,11 @@ public final class AppState {
             )
             UserDefaults.standard.set(bookmark, forKey: kNotesFolderBookmarkKey)
         } catch {
-            // Fall through
+            // Fall through — URL from NSOpenPanel still has temporary access
         }
 
+        // Ensure security-scoped access for bookmark-resolved URLs
+        _ = url.startAccessingSecurityScopedResource()
         notesFolderURL = url
         setupStorage(url: url)
     }

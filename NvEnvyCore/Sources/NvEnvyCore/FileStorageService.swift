@@ -23,15 +23,18 @@ public actor FileStorageService {
 
         guard let enumerator = fileManager.enumerator(
             at: notesDirectory,
-            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey, .isRegularFileKey, .isDirectoryKey],
+            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey, .isDirectoryKey],
             options: [.skipsHiddenFiles]
         ) else { return [] }
 
         let ignoredDirs: Set<String> = [".obsidian"]
+        // Resolve the base path once, not per-file
+        let basePath = notesDirectory.resolvingSymlinksInPath().path
+        let basePrefix = basePath.hasSuffix("/") ? basePath : basePath + "/"
 
         while let url = enumerator.nextObject() as? URL {
-            // Skip ignored directories
-            if url.hasDirectoryPath {
+            // Use pre-fetched resource values for directory check (no extra stat)
+            if let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory, isDir {
                 let dirName = url.lastPathComponent
                 if dirName.hasPrefix(".") || ignoredDirs.contains(dirName) {
                     enumerator.skipDescendants()
@@ -44,15 +47,27 @@ public actor FileStorageService {
                   let content = String(data: data, encoding: .utf8) else { continue }
 
             let parsed = FrontmatterParser.parse(content)
-            // Use relative path (without .md) as filename to preserve subfolder structure
-            let resolvedURL = url.standardizedFileURL
-            let resolvedDir = notesDirectory.standardizedFileURL
-            let relativePath = resolvedURL.path.replacingOccurrences(of: resolvedDir.path + "/", with: "")
+
+            // Compute relative path using string prefix (no per-file symlink resolution)
+            let filePath = url.path
+            let relativePath: String
+            if filePath.hasPrefix(basePrefix) {
+                relativePath = String(filePath.dropFirst(basePrefix.count))
+            } else {
+                // Fallback: resolve this one URL if prefix doesn't match
+                let resolved = url.resolvingSymlinksInPath().path
+                if resolved.hasPrefix(basePrefix) {
+                    relativePath = String(resolved.dropFirst(basePrefix.count))
+                } else {
+                    relativePath = url.lastPathComponent
+                }
+            }
+
             let filename = String(relativePath.dropLast(3)) // remove .md
             let title = url.deletingPathExtension().lastPathComponent
-            let attrs = try? fileManager.attributesOfItem(atPath: url.path)
-            let modDate = attrs?[.modificationDate] as? Date ?? Date()
-            let fileSize = attrs?[.size] as? UInt64
+            let resourceValues = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+            let modDate = resourceValues?.contentModificationDate ?? Date()
+            let fileSize = resourceValues?.fileSize.map { UInt64($0) }
 
             let note = Note(
                 title: title,
