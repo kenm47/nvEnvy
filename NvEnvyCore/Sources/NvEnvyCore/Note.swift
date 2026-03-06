@@ -1,0 +1,74 @@
+import Foundation
+
+public final class Note: Identifiable, @unchecked Sendable {
+    public let id: UUID
+    public var title: String
+    public var body: String
+    public var tags: [String]
+    public var filename: String
+    public var createdDate: Date
+    public var modifiedDate: Date
+    public var fileModifiedDate: Date?
+    public var fileSize: UInt64?
+    public var fileEncoding: String.Encoding
+    public var selectedRange: NSRange?
+
+    // Search optimization: cached lowercase strings
+    public var cachedLowercaseTitle: String
+    public var cachedLowercaseBody: String
+    public var cachedLowercaseTags: String
+
+    public init(
+        id: UUID = UUID(),
+        title: String,
+        body: String = "",
+        tags: [String] = [],
+        filename: String = "",
+        createdDate: Date = Date(),
+        modifiedDate: Date = Date(),
+        fileEncoding: String.Encoding = .utf8
+    ) {
+        self.id = id
+        self.title = title
+        self.body = body
+        self.tags = tags
+        self.filename = filename.isEmpty ? Note.sanitizedFilename(from: title) : filename
+        self.createdDate = createdDate
+        self.modifiedDate = modifiedDate
+        self.fileEncoding = fileEncoding
+        self.cachedLowercaseTitle = title.lowercased()
+        self.cachedLowercaseBody = body.lowercased()
+        self.cachedLowercaseTags = tags.joined(separator: " ").lowercased()
+    }
+
+    public func invalidateSearchCache() {
+        cachedLowercaseTitle = title.lowercased()
+        cachedLowercaseBody = body.lowercased()
+        cachedLowercaseTags = tags.joined(separator: " ").lowercased()
+    }
+
+    public static func sanitizedFilename(from title: String) -> String {
+        let forbidden = CharacterSet(charactersIn: ":/\\?\"|*<>\0")
+        var name = title.components(separatedBy: forbidden).joined(separator: "-")
+        // Truncate to 255 bytes UTF-8
+        while name.utf8.count > 250 {
+            name = String(name.dropLast())
+        }
+        if name.isEmpty {
+            name = "Untitled"
+        }
+        return name
+    }
+}
+
+extension Note: Equatable {
+    public static func == (lhs: Note, rhs: Note) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+extension Note: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}

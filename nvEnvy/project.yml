@@ -1,0 +1,47 @@
+name: nvEnvy
+options:
+  bundleIdPrefix: com.nvenvy
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  minimumXcodeGenVersion: "2.35"
+
+packages:
+  NvEnvyCore:
+    path: ../NvEnvyCore
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: "2.0.0"
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.5.0"
+
+targets:
+  nvEnvy:
+    type: application
+    platform: macOS
+    sources:
+      - nvEnvy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nvenvy.app
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.productivity"
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 nvEnvy. All rights reserved."
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        CODE_SIGN_ENTITLEMENTS: nvEnvy/nvEnvy.entitlements
+        ARCHS: "$(ARCHS_STANDARD)"
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - package: NvEnvyCore
+      - package: KeyboardShortcuts
+      - package: Sparkle
+    entitlements:
+      path: nvEnvy/nvEnvy.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.files.bookmarks.app-scope: true
+        com.apple.security.network.client: true
