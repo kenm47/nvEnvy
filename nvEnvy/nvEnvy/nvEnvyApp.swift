@@ -136,6 +136,20 @@ struct nvEnvyCommands: Commands {
                 appState.showWordCount.toggle()
             }
             .keyboardShortcut("k", modifiers: [.command, .shift])
+
+            Button("Toggle Layout") {
+                appState.layoutOrientation = appState.layoutOrientation == .horizontal ? .vertical : .horizontal
+            }
+            .keyboardShortcut("l", modifiers: [.command, .option])
+
+            Picker("Note List Style", selection: Binding(
+                get: { appState.noteListDisplayMode },
+                set: { appState.noteListDisplayMode = $0 }
+            )) {
+                ForEach(AppState.NoteListDisplayMode.allCases, id: \.self) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
         }
 
         CommandMenu("Notes") {
@@ -232,6 +246,19 @@ extension Notification.Name {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var appState: AppState?
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        appState?.closeAction == .quit
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            for window in sender.windows {
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+        return true
+    }
 
     func applicationWillTerminate(_ notification: Notification) {
         guard let appState = appState else { return }

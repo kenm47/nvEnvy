@@ -17,10 +17,17 @@ struct NoteListView: View {
         VStack(spacing: 0) {
             List(selection: $selectedNoteID) {
                 ForEach(sortedNotes) { note in
-                    NoteRow(note: note, onTagTap: { tag in
-                        appState.tagFilter = tag
-                    })
-                    .tag(note.id)
+                    if appState.noteListDisplayMode == .preview {
+                        NotePreviewRow(note: note, onTagTap: { tag in
+                            appState.tagFilter = tag
+                        })
+                        .tag(note.id)
+                    } else {
+                        NoteRow(note: note, onTagTap: { tag in
+                            appState.tagFilter = tag
+                        })
+                        .tag(note.id)
+                    }
                 }
             }
             .listStyle(.inset)
@@ -127,6 +134,43 @@ struct NoteRow: View {
             Text(note.modifiedDate, style: .relative)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(note.title), \(note.tags.isEmpty ? "" : "tags: \(note.tags.joined(separator: ", ")), ")modified \(note.modifiedDate.formatted(.relative(presentation: .named)))")
+    }
+}
+
+struct NotePreviewRow: View {
+    let note: Note
+    var onTagTap: (String) -> Void
+
+    private var firstLine: String {
+        let body = note.body.trimmingCharacters(in: .whitespacesAndNewlines)
+        return body.components(separatedBy: .newlines).first ?? ""
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(note.title)
+                .font(.body.bold())
+                .lineLimit(1)
+
+            if !firstLine.isEmpty {
+                Text(firstLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            if !note.tags.isEmpty {
+                HStack(spacing: 4) {
+                    ForEach(note.tags, id: \.self) { tag in
+                        TagPill(tag: tag)
+                            .onTapGesture { onTagTap(tag) }
+                    }
+                }
+            }
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)

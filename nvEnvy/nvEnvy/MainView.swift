@@ -7,30 +7,78 @@ struct MainView: View {
     var body: some View {
         @Bindable var appState = appState
         VStack(spacing: 0) {
-            SearchField(
-                query: $appState.searchQuery,
-                onReturn: { appState.createOrSelectNote() },
-                onEscape: { appState.clearSearch() }
-            )
+            HStack(spacing: 6) {
+                // Snapback button
+                if appState.hasSnapback {
+                    Button {
+                        appState.snapback()
+                    } label: {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Go back to previous note")
+                }
+
+                SearchField(
+                    query: $appState.searchQuery,
+                    onReturn: {
+                        if appState.isRenaming {
+                            appState.commitRename()
+                        } else {
+                            appState.createOrSelectNote()
+                        }
+                    },
+                    onEscape: {
+                        if appState.isRenaming {
+                            appState.isRenaming = false
+                            appState.searchQuery = ""
+                        } else {
+                            appState.clearSearch()
+                        }
+                    }
+                )
+            }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .background(.bar)
 
             Divider()
 
-            HSplitView {
-                NoteListView(selectedNoteID: $appState.selectedNoteID)
-                    .frame(minWidth: 180, maxWidth: 400)
-
-                EditorView(selectedNoteID: appState.selectedNoteID)
-                    .frame(minWidth: 300)
+            if appState.layoutOrientation == .vertical {
+                VSplitView {
+                    NoteListView(selectedNoteID: $appState.selectedNoteID)
+                        .frame(minHeight: 100, maxHeight: 300)
+                    EditorView(selectedNoteID: appState.selectedNoteID)
+                        .frame(minHeight: 200)
+                }
+            } else {
+                HSplitView {
+                    NoteListView(selectedNoteID: $appState.selectedNoteID)
+                        .frame(minWidth: 180, maxWidth: 400)
+                    EditorView(selectedNoteID: appState.selectedNoteID)
+                        .frame(minWidth: 300)
+                }
             }
         }
         .frame(minWidth: 600, minHeight: 400)
         .background(
             KeyboardShortcutHandlers(appState: appState)
         )
+        .background(WindowAccessor())
     }
+}
+
+// Sets frame autosave name on the NSWindow
+struct WindowAccessor: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            view.window?.setFrameAutosaveName("nvEnvyMainWindow")
+        }
+        return view
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
 // Invisible view for keyboard shortcuts
@@ -39,16 +87,12 @@ struct KeyboardShortcutHandlers: View {
 
     var body: some View {
         Group {
-            // ⌘J — next note
             Button("") { appState.selectNextNote() }
                 .keyboardShortcut("j", modifiers: .command)
-            // ⌘K — previous note
             Button("") { appState.selectPreviousNote() }
                 .keyboardShortcut("k", modifiers: .command)
-            // ⌘D — deselect
             Button("") { appState.deselectNote() }
                 .keyboardShortcut("d", modifiers: .command)
-            // ⌘Delete — delete note
             Button("") {
                 if let id = appState.selectedNoteID {
                     if appState.confirmDeletion {
@@ -59,28 +103,30 @@ struct KeyboardShortcutHandlers: View {
                 }
             }
             .keyboardShortcut(.delete, modifiers: .command)
-            // ⌘⇧R — reveal in Finder
             Button("") {
                 if let id = appState.selectedNoteID {
                     appState.revealInFinder(noteID: id)
                 }
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
-            // ⇧⌘K — toggle word count
             Button("") { appState.showWordCount.toggle() }
                 .keyboardShortcut("k", modifiers: [.command, .shift])
-            // ⌃⌘P — toggle preview
             Button("") { appState.showPreview.toggle() }
                 .keyboardShortcut("p", modifiers: [.command, .control])
-            // ⌘⌥1 — B/W scheme
             Button("") { appState.colorScheme = .blackWhite }
                 .keyboardShortcut("1", modifiers: [.command, .option])
-            // ⌘⌥2 — Low Contrast
             Button("") { appState.colorScheme = .lowContrast }
                 .keyboardShortcut("2", modifiers: [.command, .option])
-            // ⌘⌥3 — Custom
             Button("") { appState.colorScheme = .custom }
                 .keyboardShortcut("3", modifiers: [.command, .option])
+            // ⌘⌥L — toggle layout
+            Button("") {
+                appState.layoutOrientation = appState.layoutOrientation == .horizontal ? .vertical : .horizontal
+            }
+            .keyboardShortcut("l", modifiers: [.command, .option])
+            // ⌘R — rename note
+            Button("") { appState.startRename() }
+                .keyboardShortcut("r", modifiers: .command)
         }
         .frame(width: 0, height: 0)
         .opacity(0)

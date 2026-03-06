@@ -51,6 +51,26 @@ struct GeneralPreferencesView: View {
 
             Section("Appearance") {
                 Toggle("Show dock icon", isOn: $appState.showDockIcon)
+
+                Picker("Note list style:", selection: $appState.noteListDisplayMode) {
+                    ForEach(AppState.NoteListDisplayMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+
+                Picker("Layout:", selection: $appState.layoutOrientation) {
+                    ForEach(AppState.LayoutOrientation.allCases, id: \.self) { o in
+                        Text(o.displayName).tag(o)
+                    }
+                }
+            }
+
+            Section("Window") {
+                Picker("Close behavior:", selection: $appState.closeAction) {
+                    ForEach(AppState.CloseAction.allCases, id: \.self) { action in
+                        Text(action.displayName).tag(action)
+                    }
+                }
             }
         }
         .formStyle(.grouped)

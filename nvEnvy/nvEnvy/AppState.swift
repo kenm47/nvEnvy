@@ -25,6 +25,9 @@ private let kExternalEditorPathKey = "externalEditorPath"
 private let kAutocompleteKey = "autocomplete"
 private let kShowDockIconKey = "showDockIcon"
 private let kTagFilterKey = "tagFilter"
+private let kNoteListDisplayModeKey = "noteListDisplayMode"
+private let kLayoutOrientationKey = "layoutOrientation"
+private let kCloseActionKey = "closeAction"
 
 @MainActor
 @Observable
@@ -101,6 +104,53 @@ public final class AppState {
         }
     }
 
+    // Display mode & layout
+    public var noteListDisplayMode: NoteListDisplayMode {
+        didSet { UserDefaults.standard.set(noteListDisplayMode.rawValue, forKey: kNoteListDisplayModeKey) }
+    }
+    public var layoutOrientation: LayoutOrientation {
+        didSet { UserDefaults.standard.set(layoutOrientation.rawValue, forKey: kLayoutOrientationKey) }
+    }
+    public var closeAction: CloseAction {
+        didSet { UserDefaults.standard.set(closeAction.rawValue, forKey: kCloseActionKey) }
+    }
+
+    public enum NoteListDisplayMode: Int, CaseIterable {
+        case standard = 0
+        case preview = 1
+
+        public var displayName: String {
+            switch self {
+            case .standard: return "Standard"
+            case .preview: return "Preview"
+            }
+        }
+    }
+
+    public enum LayoutOrientation: Int, CaseIterable {
+        case horizontal = 0
+        case vertical = 1
+
+        public var displayName: String {
+            switch self {
+            case .horizontal: return "Side by Side"
+            case .vertical: return "Stacked"
+            }
+        }
+    }
+
+    public enum CloseAction: Int, CaseIterable {
+        case quit = 0
+        case hide = 1
+
+        public var displayName: String {
+            switch self {
+            case .quit: return "Quit"
+            case .hide: return "Hide"
+            }
+        }
+    }
+
     // Tag filtering
     public var tagFilter: String? {
         didSet { performSearch() }
@@ -171,6 +221,9 @@ public final class AppState {
         self.externalEditorPath = ud.string(forKey: kExternalEditorPathKey)
         self.autocompleteEnabled = ud.object(forKey: kAutocompleteKey) as? Bool ?? false
         self.showDockIcon = ud.object(forKey: kShowDockIconKey) as? Bool ?? true
+        self.noteListDisplayMode = NoteListDisplayMode(rawValue: ud.integer(forKey: kNoteListDisplayModeKey)) ?? .standard
+        self.layoutOrientation = LayoutOrientation(rawValue: ud.integer(forKey: kLayoutOrientationKey)) ?? .horizontal
+        self.closeAction = CloseAction(rawValue: ud.integer(forKey: kCloseActionKey)) ?? .quit
 
         restoreNotesFolder()
     }
@@ -580,6 +633,26 @@ public final class AppState {
         let link = "nvenvy://find/\(encoded)"
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(link, forType: .string)
+    }
+
+    // MARK: - Rename
+
+    public var isRenaming: Bool = false
+
+    public func startRename() {
+        guard let noteID = selectedNoteID, let note = note(for: noteID) else { return }
+        isRenaming = true
+        searchQuery = note.title
+    }
+
+    public func commitRename() {
+        guard isRenaming, let noteID = selectedNoteID, !searchQuery.isEmpty else {
+            isRenaming = false
+            return
+        }
+        isRenaming = false
+        renameNote(noteID: noteID, newTitle: searchQuery)
+        searchQuery = ""
     }
 
     // MARK: - Bookmarks
