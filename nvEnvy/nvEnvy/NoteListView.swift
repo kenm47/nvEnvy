@@ -129,6 +129,8 @@ struct NoteRow: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(note.title), \(note.tags.isEmpty ? "" : "tags: \(note.tags.joined(separator: ", ")), ")modified \(note.modifiedDate.formatted(.relative(presentation: .named)))")
     }
 }
 
@@ -142,6 +144,9 @@ struct TagPill: View {
             .padding(.vertical, 2)
             .background(tagColor.opacity(0.2), in: Capsule())
             .foregroundStyle(tagColor)
+            .accessibilityLabel(tag)
+            .accessibilityHint("Filter by this tag")
+            .accessibilityAddTraits(.isButton)
     }
 
     private var tagColor: Color {

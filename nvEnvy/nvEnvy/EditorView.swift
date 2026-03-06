@@ -46,6 +46,8 @@ struct WordCountOverlay: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+            .accessibilityLabel("Word count: \(wordCount) words, \(charCount) characters, \(lineCount) lines")
+            .accessibilityAddTraits(.updatesFrequently)
     }
 }
 

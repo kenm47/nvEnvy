@@ -42,6 +42,7 @@ struct TagEditorPanel: View {
                     .onChange(of: newTag) { _, newValue in
                         updateSuggestions(newValue)
                     }
+                    .accessibilityLabel("Add tag")
 
                 Button("Add") { addTag() }
                     .disabled(newTag.trimmingCharacters(in: .whitespaces).isEmpty)

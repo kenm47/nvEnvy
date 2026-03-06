@@ -19,6 +19,8 @@ struct SearchField: View {
                     onEscape()
                     return .handled
                 }
+                .accessibilityLabel("Search or Create")
+                .accessibilityAddTraits(.isSearchField)
 
             if !query.isEmpty {
                 Button {
@@ -28,6 +30,7 @@ struct SearchField: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
             }
         }
         .padding(6)
