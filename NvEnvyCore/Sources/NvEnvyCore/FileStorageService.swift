@@ -19,25 +19,43 @@ public actor FileStorageService {
     }
 
     public func readAllNotes() throws -> [Note] {
-        let urls = try fileManager.contentsOfDirectory(
-            at: notesDirectory,
-            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey],
-            options: [.skipsHiddenFiles]
-        )
+        var results: [Note] = []
 
-        return urls.compactMap { url -> Note? in
-            guard url.pathExtension == "md" else { return nil }
+        guard let enumerator = fileManager.enumerator(
+            at: notesDirectory,
+            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey, .isRegularFileKey, .isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+
+        let ignoredDirs: Set<String> = [".obsidian"]
+
+        while let url = enumerator.nextObject() as? URL {
+            // Skip ignored directories
+            if url.hasDirectoryPath {
+                let dirName = url.lastPathComponent
+                if dirName.hasPrefix(".") || ignoredDirs.contains(dirName) {
+                    enumerator.skipDescendants()
+                }
+                continue
+            }
+
+            guard url.pathExtension == "md" else { continue }
             guard let data = try? Data(contentsOf: url),
-                  let content = String(data: data, encoding: .utf8) else { return nil }
+                  let content = String(data: data, encoding: .utf8) else { continue }
 
             let parsed = FrontmatterParser.parse(content)
-            let filename = url.deletingPathExtension().lastPathComponent
+            // Use relative path (without .md) as filename to preserve subfolder structure
+            let resolvedURL = url.standardizedFileURL
+            let resolvedDir = notesDirectory.standardizedFileURL
+            let relativePath = resolvedURL.path.replacingOccurrences(of: resolvedDir.path + "/", with: "")
+            let filename = String(relativePath.dropLast(3)) // remove .md
+            let title = url.deletingPathExtension().lastPathComponent
             let attrs = try? fileManager.attributesOfItem(atPath: url.path)
             let modDate = attrs?[.modificationDate] as? Date ?? Date()
             let fileSize = attrs?[.size] as? UInt64
 
             let note = Note(
-                title: filename,
+                title: title,
                 body: parsed.body,
                 tags: parsed.frontmatter?.tags ?? [],
                 filename: filename,
@@ -46,8 +64,10 @@ public actor FileStorageService {
             )
             note.fileModifiedDate = modDate
             note.fileSize = fileSize
-            return note
+            results.append(note)
         }
+
+        return results
     }
 
     // MARK: - Write

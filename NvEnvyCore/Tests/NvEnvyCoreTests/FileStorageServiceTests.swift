@@ -82,4 +82,68 @@ final class FileStorageServiceTests: XCTestCase {
         let notes = try await storage.readAllNotes()
         XCTAssertEqual(notes.count, 0)
     }
+
+    // MARK: - Recursive Folder Reading
+
+    func testRecursiveSubdirectoryRead() async throws {
+        // Root note
+        let root = tempDir.appendingPathComponent("Root Note.md")
+        try "Root body".write(to: root, atomically: true, encoding: .utf8)
+
+        // Subdirectory note
+        let subDir = tempDir.appendingPathComponent("subfolder")
+        try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
+        let subNote = subDir.appendingPathComponent("Sub Note.md")
+        try "Sub body".write(to: subNote, atomically: true, encoding: .utf8)
+
+        let notes = try await storage.readAllNotes()
+        XCTAssertEqual(notes.count, 2)
+
+        let rootNote = notes.first { $0.title == "Root Note" }
+        XCTAssertNotNil(rootNote)
+        XCTAssertEqual(rootNote?.body, "Root body")
+        XCTAssertEqual(rootNote?.filename, "Root Note")
+
+        let subFolderNote = notes.first { $0.title == "Sub Note" }
+        XCTAssertNotNil(subFolderNote)
+        XCTAssertEqual(subFolderNote?.body, "Sub body")
+        XCTAssertEqual(subFolderNote?.filename, "subfolder/Sub Note")
+    }
+
+    func testObsidianDirIgnored() async throws {
+        // .obsidian directory should be skipped
+        let obsDir = tempDir.appendingPathComponent(".obsidian")
+        try FileManager.default.createDirectory(at: obsDir, withIntermediateDirectories: true)
+        let obsNote = obsDir.appendingPathComponent("workspace.md")
+        try "workspace data".write(to: obsNote, atomically: true, encoding: .utf8)
+
+        // Regular note
+        let note = tempDir.appendingPathComponent("Real Note.md")
+        try "Real content".write(to: note, atomically: true, encoding: .utf8)
+
+        let notes = try await storage.readAllNotes()
+        XCTAssertEqual(notes.count, 1)
+        XCTAssertEqual(notes[0].title, "Real Note")
+    }
+
+    func testHiddenDirectoriesSkipped() async throws {
+        let hiddenDir = tempDir.appendingPathComponent(".hidden")
+        try FileManager.default.createDirectory(at: hiddenDir, withIntermediateDirectories: true)
+        let hiddenNote = hiddenDir.appendingPathComponent("secret.md")
+        try "hidden".write(to: hiddenNote, atomically: true, encoding: .utf8)
+
+        let notes = try await storage.readAllNotes()
+        XCTAssertEqual(notes.count, 0)
+    }
+
+    func testNestedSubdirectories() async throws {
+        let deep = tempDir.appendingPathComponent("a/b/c")
+        try FileManager.default.createDirectory(at: deep, withIntermediateDirectories: true)
+        let deepNote = deep.appendingPathComponent("Deep.md")
+        try "deep content".write(to: deepNote, atomically: true, encoding: .utf8)
+
+        let notes = try await storage.readAllNotes()
+        XCTAssertEqual(notes.count, 1)
+        XCTAssertEqual(notes[0].filename, "a/b/c/Deep")
+    }
 }
