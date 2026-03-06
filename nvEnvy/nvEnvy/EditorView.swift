@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 import NvEnvyCore
 
 struct EditorView: View {
@@ -78,6 +79,13 @@ struct NoteTextEditor: NSViewRepresentable {
         textView.backgroundColor = appState.editorBGColor
 
         context.coordinator.textView = textView
+
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.handlePasteAsMarkdownLink(_:)),
+            name: .nvEnvyPasteAsMarkdownLink,
+            object: nil
+        )
 
         return scrollView
     }
@@ -366,6 +374,27 @@ struct NoteTextEditor: NSViewRepresentable {
                 textView.insertText(markers, replacementRange: selectedRange)
                 textView.setSelectedRange(NSRange(location: selectedRange.location + prefix.count, length: 0))
             }
+        }
+
+        // MARK: - Paste as Markdown Link
+
+        @objc func handlePasteAsMarkdownLink(_ notification: Notification) {
+            guard let textView = textView else { return }
+            let pasteboard = NSPasteboard.general
+            guard let clipboardString = pasteboard.string(forType: .string),
+                  let _ = URL(string: clipboardString),
+                  clipboardString.hasPrefix("http") else { return }
+
+            let selectedRange = textView.selectedRange()
+            let selectedText: String
+            if selectedRange.length > 0 {
+                selectedText = (textView.string as NSString).substring(with: selectedRange)
+            } else {
+                selectedText = clipboardString
+            }
+
+            let markdown = "[\(selectedText)](\(clipboardString))"
+            textView.insertText(markdown, replacementRange: selectedRange)
         }
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import NvEnvyCore
 import KeyboardShortcuts
 
@@ -40,6 +41,64 @@ struct nvEnvyCommands: Commands {
     let appState: AppState
 
     var body: some Commands {
+        CommandGroup(after: .importExport) {
+            Button("Import Files...") {
+                let panel = NSOpenPanel()
+                panel.allowsMultipleSelection = true
+                panel.canChooseFiles = true
+                panel.canChooseDirectories = false
+                panel.allowedContentTypes = [.plainText, .rtf, .html, .text,
+                    .init(filenameExtension: "md")!, .init(filenameExtension: "markdown")!,
+                    .init(filenameExtension: "mmd")!]
+                guard panel.runModal() == .OK else { return }
+                appState.importFiles(urls: panel.urls)
+            }
+
+            Button("Import Folder...") {
+                let panel = NSOpenPanel()
+                panel.canChooseFiles = false
+                panel.canChooseDirectories = true
+                panel.allowsMultipleSelection = false
+                guard panel.runModal() == .OK, let url = panel.url else { return }
+                appState.importDirectory(url: url)
+            }
+
+            Divider()
+
+            Button("Export...") {
+                if let id = appState.selectedNoteID {
+                    appState.exportNote(noteID: id)
+                }
+            }
+            .keyboardShortcut("e", modifiers: .command)
+            .disabled(appState.selectedNoteID == nil)
+        }
+
+        CommandGroup(replacing: .printItem) {
+            Button("Print...") {
+                if let id = appState.selectedNoteID {
+                    appState.printNote(noteID: id)
+                }
+            }
+            .keyboardShortcut("p", modifiers: .command)
+            .disabled(appState.selectedNoteID == nil)
+        }
+
+        CommandGroup(after: .pasteboard) {
+            Button("Paste as Markdown Link") {
+                NotificationCenter.default.post(name: .nvEnvyPasteAsMarkdownLink, object: nil)
+            }
+            .keyboardShortcut("v", modifiers: [.command, .option])
+
+            Button("Copy Note Link") {
+                if let id = appState.selectedNoteID {
+                    appState.copyNoteLink(noteID: id)
+                }
+            }
+            .keyboardShortcut("c", modifiers: [.command, .option])
+            .disabled(appState.selectedNoteID == nil)
+        }
+
         CommandGroup(after: .textFormatting) {
             Button("Bold") {
                 postFormattingCommand(.bold)
@@ -131,6 +190,7 @@ enum FormattingCommand {
 extension Notification.Name {
     static let nvEnvyFormatting = Notification.Name("nvEnvyFormatting")
     static let nvEnvyShowTagEditor = Notification.Name("nvEnvyShowTagEditor")
+    static let nvEnvyPasteAsMarkdownLink = Notification.Name("nvEnvyPasteAsMarkdownLink")
 }
 
 // MARK: - App Delegate

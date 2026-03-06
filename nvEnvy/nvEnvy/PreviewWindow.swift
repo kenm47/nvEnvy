@@ -46,6 +46,10 @@ struct PreviewWindow: View {
                 Button("Save HTML...") {
                     saveHTML()
                 }
+
+                Button("Print...") {
+                    printPreview()
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -94,6 +98,20 @@ struct PreviewWindow: View {
         panel.nameFieldStringValue = (note?.title ?? "preview") + ".html"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         try? renderedHTML.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    private func printPreview() {
+        guard let note = note else { return }
+        let printView = NSTextView(frame: NSRect(x: 0, y: 0, width: 468, height: 648))
+        printView.string = note.body
+        printView.font = appState.editorFont
+        let printInfo = NSPrintInfo.shared
+        printInfo.horizontalPagination = .fit
+        printInfo.verticalPagination = .automatic
+        let op = NSPrintOperation(view: printView, printInfo: printInfo)
+        op.showsPrintPanel = true
+        op.showsProgressPanel = true
+        op.run()
     }
 }
 

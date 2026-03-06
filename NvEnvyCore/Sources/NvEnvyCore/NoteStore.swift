@@ -39,6 +39,15 @@ public actor NoteStore {
         return note
     }
 
+    public func addImportedNote(title: String, body: String, tags: [String]) async throws -> Note {
+        let sanitized = Note.sanitizedFilename(from: title)
+        let uniqueName = await storage.ensureUniqueFilename(sanitized)
+        let note = Note(title: title, body: body, tags: tags, filename: uniqueName)
+        notes[note.id] = note
+        markDirty(note.id)
+        return note
+    }
+
     public func updateBody(noteID: UUID, body: String) {
         guard let note = notes[noteID] else { return }
         note.body = body

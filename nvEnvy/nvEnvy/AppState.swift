@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import UniformTypeIdentifiers
 import NvEnvyCore
 
 private let kNotesFolderBookmarkKey = "notesFolderBookmark"
@@ -422,6 +423,128 @@ public final class AppState {
         editorFont = font
         UserDefaults.standard.set(font.fontName, forKey: kEditorFontNameKey)
         UserDefaults.standard.set(Double(font.pointSize), forKey: kEditorFontSizeKey)
+    }
+
+    // MARK: - Import
+
+    public func importFiles(urls: [URL]) {
+        Task {
+            guard let store = noteStore else { return }
+            let service = ImportExportService()
+            for url in urls {
+                if let imported = try? await service.importFile(at: url) {
+                    let note = try? await store.addImportedNote(
+                        title: imported.title, body: imported.body, tags: imported.tags
+                    )
+                    if let note { allNotes.append(note) }
+                }
+            }
+            performSearch()
+        }
+    }
+
+    public func importDirectory(url: URL) {
+        Task {
+            guard let store = noteStore else { return }
+            let service = ImportExportService()
+            let imported = (try? await service.importDirectory(at: url)) ?? []
+            for item in imported {
+                let note = try? await store.addImportedNote(
+                    title: item.title, body: item.body, tags: item.tags
+                )
+                if let note { allNotes.append(note) }
+            }
+            performSearch()
+        }
+    }
+
+    public func importPasteboardItems(_ items: [NSPasteboardItem]) {
+        Task {
+            guard let store = noteStore else { return }
+            let service = ImportExportService()
+            let dateStr = ISO8601DateFormatter().string(from: Date())
+
+            for item in items {
+                let imported: ImportedNote?
+                if let rtfData = item.data(forType: .rtf) {
+                    imported = await service.importRTFData(rtfData, title: "Imported \(dateStr)")
+                } else if let html = item.string(forType: .html) {
+                    imported = await service.importHTMLString(html, title: "Imported \(dateStr)")
+                } else if let text = item.string(forType: .string) {
+                    imported = await service.importPlainText(text, title: "Imported \(dateStr)")
+                } else {
+                    imported = nil
+                }
+
+                if let imported {
+                    let note = try? await store.addImportedNote(
+                        title: imported.title, body: imported.body, tags: imported.tags
+                    )
+                    if let note { allNotes.append(note) }
+                }
+            }
+            performSearch()
+        }
+    }
+
+    // MARK: - Export
+
+    public func exportNote(noteID: UUID) {
+        guard let note = note(for: noteID) else { return }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText, .rtf, .html]
+        panel.nameFieldStringValue = note.title
+        panel.canSelectHiddenExtension = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        Task {
+            let service = ImportExportService()
+            let ext = url.pathExtension.lowercased()
+
+            switch ext {
+            case "html", "htm":
+                let html = await service.exportAsHTML(note)
+                try? html.write(to: url, atomically: true, encoding: .utf8)
+            case "rtf":
+                if let data = await service.exportAsRTF(note) {
+                    try? data.write(to: url)
+                }
+            default:
+                let text = await service.exportAsPlainText(note)
+                try? text.write(to: url, atomically: true, encoding: .utf8)
+            }
+        }
+    }
+
+    // MARK: - Print
+
+    public func printNote(noteID: UUID) {
+        guard let note = note(for: noteID) else { return }
+
+        let printView = NSTextView(frame: NSRect(x: 0, y: 0, width: 468, height: 648))
+        printView.string = note.body
+        printView.font = editorFont
+
+        let printInfo = NSPrintInfo.shared
+        printInfo.horizontalPagination = .fit
+        printInfo.verticalPagination = .automatic
+
+        let op = NSPrintOperation(view: printView, printInfo: printInfo)
+        op.showsPrintPanel = true
+        op.showsProgressPanel = true
+        op.run()
+    }
+
+    // MARK: - Copy Note Link
+
+    public func copyNoteLink(noteID: UUID) {
+        guard let note = note(for: noteID) else { return }
+        let encoded = note.title.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? note.title
+        let link = "nvenvy://find/\(encoded)"
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(link, forType: .string)
     }
 
     // MARK: - Flush on quit

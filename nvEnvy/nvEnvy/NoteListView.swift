@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import NvEnvyCore
 
 struct NoteListView: View {
@@ -24,8 +25,11 @@ struct NoteListView: View {
             }
             .listStyle(.inset)
             .onKeyPress(.return) {
-                // Return in list -> could focus editor, but SwiftUI doesn't give us direct focus control
                 return .ignored
+            }
+            .onDrop(of: [.plainText, .rtf, .html, .fileURL], isTargeted: nil) { providers in
+                handleDrop(providers)
+                return true
             }
 
             Divider()
@@ -61,6 +65,31 @@ struct NoteListView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
+        }
+    }
+
+    private func handleDrop(_ providers: [NSItemProvider]) {
+        for provider in providers {
+            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                    guard let data = item as? Data,
+                          let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+                    Task { @MainActor in
+                        var isDir: ObjCBool = false
+                        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
+                            appState.importDirectory(url: url)
+                        } else {
+                            appState.importFiles(urls: [url])
+                        }
+                    }
+                }
+            } else {
+                // Text/RTF/HTML pasteboard data
+                Task { @MainActor in
+                    let pasteboard = NSPasteboard.general
+                    appState.importPasteboardItems(pasteboard.pasteboardItems ?? [])
+                }
+            }
         }
     }
 
