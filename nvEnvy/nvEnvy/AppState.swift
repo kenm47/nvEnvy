@@ -28,6 +28,7 @@ private let kTagFilterKey = "tagFilter"
 private let kNoteListDisplayModeKey = "noteListDisplayMode"
 private let kLayoutOrientationKey = "layoutOrientation"
 private let kCloseActionKey = "closeAction"
+private let kMirrorFinderTagsKey = "mirrorFinderTags"
 
 @MainActor
 @Observable
@@ -113,6 +114,9 @@ public final class AppState {
     }
     public var closeAction: CloseAction {
         didSet { UserDefaults.standard.set(closeAction.rawValue, forKey: kCloseActionKey) }
+    }
+    public var mirrorFinderTags: Bool {
+        didSet { UserDefaults.standard.set(mirrorFinderTags, forKey: kMirrorFinderTagsKey) }
     }
 
     public enum NoteListDisplayMode: Int, CaseIterable {
@@ -224,6 +228,7 @@ public final class AppState {
         self.noteListDisplayMode = NoteListDisplayMode(rawValue: ud.integer(forKey: kNoteListDisplayModeKey)) ?? .standard
         self.layoutOrientation = LayoutOrientation(rawValue: ud.integer(forKey: kLayoutOrientationKey)) ?? .horizontal
         self.closeAction = CloseAction(rawValue: ud.integer(forKey: kCloseActionKey)) ?? .quit
+        self.mirrorFinderTags = ud.object(forKey: kMirrorFinderTagsKey) as? Bool ?? true
 
         restoreNotesFolder()
     }
@@ -390,6 +395,10 @@ public final class AppState {
         Task {
             await noteStore?.updateTags(noteID: noteID, tags: tags)
         }
+
+        if mirrorFinderTags {
+            writeFinderTags(for: note)
+        }
     }
 
     public func deleteNote(noteID: UUID) {
@@ -486,7 +495,7 @@ public final class AppState {
     public func writeFinderTags(for note: Note) {
         guard let url = notesFolderURL else { return }
         let fileURL = url.appendingPathComponent(note.filename + ".md")
-        try? (fileURL as NSURL).setResourceValue(note.tags, forKey: .tagNamesKey)
+        FinderTagService.writeFinderTags(note.tags, to: fileURL)
     }
 
     // MARK: - External Editor

@@ -209,6 +209,10 @@ struct DatabasePreferencesView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Finder Tags") {
+                Toggle("Mirror tags to Finder", isOn: $appState.mirrorFinderTags)
+            }
+
             Section("Behavior") {
                 Toggle("Confirm note deletion", isOn: $appState.confirmDeletion)
             }
