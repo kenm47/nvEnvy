@@ -9,10 +9,15 @@ struct ContentView: View {
     @State private var showBookmarks = false
     @State private var noteToDelete: Note.ID?
 
+    @State private var showConflictList = false
+
     var body: some View {
         Group {
             if appState.notesFolderURL != nil {
-                MainView()
+                VStack(spacing: 0) {
+                    ConflictBanner()
+                    MainView()
+                }
             } else {
                 FolderPickerPrompt()
             }
@@ -51,6 +56,13 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .nvEnvyShowBookmarks)) { _ in
             showBookmarks = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nvEnvyShowConflicts)) { _ in
+            showConflictList = true
+        }
+        .sheet(isPresented: $showConflictList) {
+            ConflictListView(isPresented: $showConflictList)
+                .environment(appState)
         }
         .sheet(isPresented: $showBookmarks) {
             BookmarkListView(isPresented: $showBookmarks)

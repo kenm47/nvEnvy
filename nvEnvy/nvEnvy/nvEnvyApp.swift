@@ -167,6 +167,13 @@ struct nvEnvyCommands: Commands {
         }
 
         CommandMenu("Notes") {
+            Button("Resolve Conflicts...") {
+                NotificationCenter.default.post(name: .nvEnvyShowConflicts, object: nil)
+            }
+            .disabled(!appState.allNotes.contains(where: { $0.syncStatus == .conflict }))
+
+            Divider()
+
             Button("Open in External Editor") {
                 if let id = appState.selectedNoteID {
                     appState.openInExternalEditor(noteID: id)
@@ -262,6 +269,7 @@ extension Notification.Name {
     static let nvEnvyShowBookmarks = Notification.Name("nvEnvyShowBookmarks")
     static let nvEnvyOpenInMarked = Notification.Name("nvEnvyOpenInMarked")
     static let nvEnvyFocusSearchField = Notification.Name("nvEnvyFocusSearchField")
+    static let nvEnvyShowConflicts = Notification.Name("nvEnvyShowConflicts")
 }
 
 // MARK: - App Delegate
