@@ -11,7 +11,7 @@ struct SearchField: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
 
-            TextField("Search or Create", text: $query)
+            TextField(String(localized: "Search or Create"), text: $query)
                 .textFieldStyle(.plain)
                 .focused($isFocused)
                 .onSubmit { onReturn() }
@@ -19,7 +19,7 @@ struct SearchField: View {
                     onEscape()
                     return .handled
                 }
-                .accessibilityLabel("Search or Create")
+                .accessibilityLabel(String(localized: "Search or Create"))
                 .accessibilityAddTraits(.isSearchField)
 
             if !query.isEmpty {
@@ -30,7 +30,7 @@ struct SearchField: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Clear search")
+                .accessibilityLabel(String(localized: "Clear search"))
             }
         }
         .padding(6)

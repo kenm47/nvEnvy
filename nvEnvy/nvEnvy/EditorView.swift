@@ -14,7 +14,7 @@ struct EditorView: View {
                    let note = appState.note(for: noteID) {
                     NoteTextEditor(note: note, appState: appState)
                 } else {
-                    Text("No note selected")
+                    Text(String(localized: "No note selected"))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }

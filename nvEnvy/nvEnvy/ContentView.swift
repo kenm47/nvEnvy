@@ -23,7 +23,7 @@ struct ContentView: View {
                     .environment(appState)
             }
         }
-        .alert("Delete Note?", isPresented: $showDeleteConfirmation) {
+        .alert(String(localized: "Delete Note?"), isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 if let id = noteToDelete {
                     appState.deleteNote(noteID: id)
@@ -56,7 +56,7 @@ struct ContentView: View {
             BookmarkListView(isPresented: $showBookmarks)
                 .environment(appState)
         }
-        .alert("No External Editor", isPresented: $showNoEditorAlert) {
+        .alert(String(localized: "No External Editor"), isPresented: $showNoEditorAlert) {
             Button("Open Preferences") {
                 NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
             }
@@ -72,11 +72,11 @@ struct FolderPickerPrompt: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("Welcome to nvEnvy")
+            Text(String(localized: "Welcome to nvEnvy"))
                 .font(.largeTitle)
-            Text("Choose a folder to store your notes.")
+            Text(String(localized: "Choose a folder to store your notes."))
                 .foregroundStyle(.secondary)
-            Button("Choose Notes Folder...") {
+            Button(String(localized: "Choose Notes Folder...")) {
                 pickFolder()
             }
             .buttonStyle(.borderedProminent)

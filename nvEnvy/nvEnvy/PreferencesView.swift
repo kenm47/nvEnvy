@@ -12,13 +12,13 @@ struct PreferencesView: View {
     var body: some View {
         TabView {
             GeneralPreferencesView()
-                .tabItem { Label("General", systemImage: "gearshape") }
+                .tabItem { Label(String(localized: "General"), systemImage: "gearshape") }
             EditingPreferencesView()
-                .tabItem { Label("Editing", systemImage: "pencil") }
+                .tabItem { Label(String(localized: "Editing"), systemImage: "pencil") }
             FontsColorsPreferencesView()
-                .tabItem { Label("Fonts & Colors", systemImage: "paintpalette") }
+                .tabItem { Label(String(localized: "Fonts & Colors"), systemImage: "paintpalette") }
             DatabasePreferencesView()
-                .tabItem { Label("Database", systemImage: "folder") }
+                .tabItem { Label(String(localized: "Database"), systemImage: "folder") }
         }
         .frame(width: 500, height: 380)
     }
