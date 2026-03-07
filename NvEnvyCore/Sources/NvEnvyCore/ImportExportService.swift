@@ -2,6 +2,9 @@ import Foundation
 #if canImport(AppKit)
 import AppKit
 #endif
+#if canImport(PDFKit)
+import PDFKit
+#endif
 
 public struct ImportedNote: Sendable {
     public let title: String
@@ -18,7 +21,8 @@ public struct ImportedNote: Sendable {
 public actor ImportExportService {
 
     public static let supportedExtensions: Set<String> = [
-        "txt", "text", "utf8", "md", "markdown", "mmd", "rtf", "htm", "html"
+        "txt", "text", "utf8", "md", "markdown", "mmd", "rtf", "htm", "html",
+        "pdf", "doc", "docx"
     ]
 
     public init() {}
@@ -53,6 +57,12 @@ public actor ImportExportService {
         case "rtf":
             let text = Self.convertRTFToPlainText(data)
             return ImportedNote(title: title, body: text)
+
+        case "pdf":
+            return try Self.importPDF(at: url, title: title)
+
+        case "doc", "docx":
+            return try Self.importWord(at: url, title: title)
 
         default:
             throw ImportExportError.unsupportedFormat(ext)
@@ -132,6 +142,40 @@ public actor ImportExportService {
         )
     }
     #endif
+
+    // MARK: - PDF Import
+
+    private static func importPDF(at url: URL, title: String) throws -> ImportedNote {
+        #if canImport(PDFKit)
+        guard let document = PDFDocument(url: url),
+              let text = document.string, !text.isEmpty else {
+            throw ImportExportError.encodingError
+        }
+        return ImportedNote(title: title, body: text)
+        #else
+        throw ImportExportError.unsupportedFormat("pdf")
+        #endif
+    }
+
+    // MARK: - Word Import
+
+    private static func importWord(at url: URL, title: String) throws -> ImportedNote {
+        #if canImport(AppKit)
+        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+            .documentType: NSAttributedString.DocumentType.docFormat
+        ]
+        if let attrStr = try? NSAttributedString(url: url, options: options, documentAttributes: nil) {
+            return ImportedNote(title: title, body: attrStr.string)
+        }
+        // Try as plain attributed string (handles .docx via default handler)
+        if let attrStr = try? NSAttributedString(url: url, options: [:], documentAttributes: nil) {
+            return ImportedNote(title: title, body: attrStr.string)
+        }
+        throw ImportExportError.encodingError
+        #else
+        throw ImportExportError.unsupportedFormat("doc")
+        #endif
+    }
 
     // MARK: - HTML Stripping
 

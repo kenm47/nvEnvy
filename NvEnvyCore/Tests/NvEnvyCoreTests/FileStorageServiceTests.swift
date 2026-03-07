@@ -22,9 +22,9 @@ final class FileStorageServiceTests: XCTestCase {
         let url = await storage.fileURL(for: note)
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
 
-        let parsed = try await storage.readNote(at: url)
-        XCTAssertEqual(parsed.body, "Hello world")
-        XCTAssertEqual(parsed.frontmatter?.tags, ["swift"])
+        let result = try await storage.readNote(at: url)
+        XCTAssertEqual(result.parsed.body, "Hello world")
+        XCTAssertEqual(result.parsed.frontmatter?.tags, ["swift"])
     }
 
     func testReadAllNotes() async throws {
@@ -75,9 +75,9 @@ final class FileStorageServiceTests: XCTestCase {
         XCTAssertEqual(unique, "Duplicate 2")
     }
 
-    func testNonMdFilesIgnored() async throws {
-        let txtFile = tempDir.appendingPathComponent("note.txt")
-        try "text note".write(to: txtFile, atomically: true, encoding: .utf8)
+    func testNonAllowedFilesIgnored() async throws {
+        let logFile = tempDir.appendingPathComponent("note.log")
+        try "log note".write(to: logFile, atomically: true, encoding: .utf8)
 
         let notes = try await storage.readAllNotes()
         XCTAssertEqual(notes.count, 0)

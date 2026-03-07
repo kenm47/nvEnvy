@@ -4,19 +4,42 @@ public actor FileStorageService {
     private let fileManager = FileManager.default
     public let notesDirectory: URL
 
-    public init(notesDirectory: URL) {
+    public init(notesDirectory: URL, allowedExtensions: Set<String>? = nil) {
         self.notesDirectory = notesDirectory
+        self.allowedExtensions = allowedExtensions ?? Self.defaultAllowedExtensions
     }
 
     // MARK: - Read
 
-    public func readNote(at url: URL) throws -> ParsedNote {
+    public func readNote(at url: URL) throws -> (parsed: ParsedNote, encoding: String.Encoding) {
         let data = try Data(contentsOf: url)
-        guard let content = String(data: data, encoding: .utf8) else {
+        let (content, encoding) = Self.decodeWithFallback(data)
+        guard let content else {
             throw FileStorageError.encodingError
         }
-        return FrontmatterParser.parse(content)
+        return (FrontmatterParser.parse(content), encoding)
     }
+
+    /// Try UTF-8, then UTF-16, then ISO Latin-1 / MacRoman.
+    public static func decodeWithFallback(_ data: Data) -> (String?, String.Encoding) {
+        if let str = String(data: data, encoding: .utf8) {
+            return (str, .utf8)
+        }
+        if let str = String(data: data, encoding: .utf16) {
+            return (str, .utf16)
+        }
+        if let str = String(data: data, encoding: .isoLatin1) {
+            return (str, .isoLatin1)
+        }
+        if let str = String(data: data, encoding: .macOSRoman) {
+            return (str, .macOSRoman)
+        }
+        return (nil, .utf8)
+    }
+
+    public static let defaultAllowedExtensions: Set<String> = ["md", "markdown", "mmd", "txt", "text"]
+
+    public var allowedExtensions: Set<String>
 
     public func readAllNotes() throws -> [Note] {
         var results: [Note] = []
@@ -28,12 +51,10 @@ public actor FileStorageService {
         ) else { return [] }
 
         let ignoredDirs: Set<String> = [".obsidian"]
-        // Resolve the base path once, not per-file
         let basePath = notesDirectory.resolvingSymlinksInPath().path
         let basePrefix = basePath.hasSuffix("/") ? basePath : basePath + "/"
 
         while let url = enumerator.nextObject() as? URL {
-            // Use pre-fetched resource values for directory check (no extra stat)
             if let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory, isDir {
                 let dirName = url.lastPathComponent
                 if dirName.hasPrefix(".") || ignoredDirs.contains(dirName) {
@@ -42,9 +63,10 @@ public actor FileStorageService {
                 continue
             }
 
-            guard url.pathExtension == "md" else { continue }
-            guard let data = try? Data(contentsOf: url),
-                  let content = String(data: data, encoding: .utf8) else { continue }
+            guard allowedExtensions.contains(url.pathExtension.lowercased()) else { continue }
+            guard let data = try? Data(contentsOf: url) else { continue }
+            let (content, encoding) = Self.decodeWithFallback(data)
+            guard let content else { continue }
 
             let parsed = FrontmatterParser.parse(content)
 
@@ -63,7 +85,8 @@ public actor FileStorageService {
                 }
             }
 
-            let filename = String(relativePath.dropLast(3)) // remove .md
+            let ext = url.pathExtension
+            let filename = String(relativePath.dropLast(ext.count + 1)) // remove .ext
             let title = url.deletingPathExtension().lastPathComponent
             let resourceValues = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
             let modDate = resourceValues?.contentModificationDate ?? Date()
@@ -79,6 +102,7 @@ public actor FileStorageService {
             )
             note.fileModifiedDate = modDate
             note.fileSize = fileSize
+            note.fileEncoding = encoding
             results.append(note)
         }
 
@@ -99,7 +123,7 @@ public actor FileStorageService {
         )
 
         let url = fileURL(for: note)
-        try atomicWrite(content: content, to: url)
+        try atomicWrite(content: content, to: url, encoding: note.fileEncoding)
     }
 
     public func deleteNote(_ note: Note) throws {
@@ -133,8 +157,8 @@ public actor FileStorageService {
         return name
     }
 
-    private func atomicWrite(content: String, to url: URL) throws {
-        guard let data = content.data(using: .utf8) else {
+    private func atomicWrite(content: String, to url: URL, encoding: String.Encoding = .utf8) throws {
+        guard let data = content.data(using: encoding) ?? content.data(using: .utf8) else {
             throw FileStorageError.encodingError
         }
         let tempURL = url.deletingLastPathComponent()
