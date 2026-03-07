@@ -97,6 +97,13 @@ struct NoteTextEditor: NSViewRepresentable {
             object: nil
         )
 
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.handleFormatting(_:)),
+            name: .nvEnvyFormatting,
+            object: nil
+        )
+
         return scrollView
     }
 
@@ -525,6 +532,20 @@ struct NoteTextEditor: NSViewRepresentable {
                 let markers = prefix + suffix
                 textView.insertText(markers, replacementRange: selectedRange)
                 textView.setSelectedRange(NSRange(location: selectedRange.location + prefix.count, length: 0))
+            }
+        }
+
+        // MARK: - Formatting Commands
+
+        @objc func handleFormatting(_ notification: Notification) {
+            guard let textView = textView,
+                  let command = notification.object as? FormattingCommand else { return }
+            switch command {
+            case .bold: toggleBold(textView)
+            case .italic: toggleItalic(textView)
+            case .strikethrough: toggleStrikethrough(textView)
+            case .indent: indentSelection(textView)
+            case .outdent: outdentSelection(textView)
             }
         }
 

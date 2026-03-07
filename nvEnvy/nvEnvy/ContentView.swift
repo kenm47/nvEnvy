@@ -60,6 +60,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .nvEnvyShowConflicts)) { _ in
             showConflictList = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .nvEnvyOpenInMarked)) { _ in
+            openSelectedNoteInMarked()
+        }
         .sheet(isPresented: $showConflictList) {
             ConflictListView(isPresented: $showConflictList)
                 .environment(appState)
@@ -75,6 +78,20 @@ struct ContentView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("No external editor is configured. Set one in Preferences > General.")
+        }
+    }
+
+    private func openSelectedNoteInMarked() {
+        guard let id = appState.selectedNoteID,
+              let note = appState.note(for: id),
+              let folderURL = appState.notesFolderURL else { return }
+        let fileURL = folderURL.appendingPathComponent(note.filename + ".md")
+        let markedBundles = ["com.brettterpstra.marked2", "com.brettterpstra.marked"]
+        for bundleID in markedBundles {
+            if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+                NSWorkspace.shared.open([fileURL], withApplicationAt: appURL, configuration: NSWorkspace.OpenConfiguration())
+                return
+            }
         }
     }
 }
