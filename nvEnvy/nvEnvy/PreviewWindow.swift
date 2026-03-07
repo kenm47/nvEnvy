@@ -46,9 +46,14 @@ struct PreviewWindow: View {
                 Button("Save HTML...") {
                     saveHTML()
                 }
+                .keyboardShortcut("s", modifiers: [.command, .option])
 
                 Button("Print...") {
                     printPreview()
+                }
+
+                Button("Open in Marked") {
+                    openInMarked()
                 }
             }
             .padding(.horizontal, 12)
@@ -89,7 +94,15 @@ struct PreviewWindow: View {
             renderedHTML = "<html><body><p>No note selected</p></body></html>"
             return
         }
-        renderedHTML = MarkdownRenderer.renderHTML(from: note.body, title: note.title)
+        let customCSS = loadCustomCSS()
+        renderedHTML = MarkdownRenderer.renderHTML(from: note.body, title: note.title, customCSS: customCSS)
+    }
+
+    private func loadCustomCSS() -> String? {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        guard let cssURL = appSupport?.appendingPathComponent("nvEnvy/custom.css"),
+              let css = try? String(contentsOf: cssURL, encoding: .utf8) else { return nil }
+        return css
     }
 
     private func saveHTML() {
@@ -112,6 +125,25 @@ struct PreviewWindow: View {
         op.showsPrintPanel = true
         op.showsProgressPanel = true
         op.run()
+    }
+
+    private func openInMarked() {
+        guard let note = note,
+              let folderURL = appState.notesFolderURL else { return }
+        let fileURL = folderURL.appendingPathComponent(note.filename + ".md")
+
+        // Try Marked 2 first, then Marked
+        let markedBundles = ["com.brettterpstra.marked2", "com.brettterpstra.marked"]
+        for bundleID in markedBundles {
+            if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+                NSWorkspace.shared.open(
+                    [fileURL],
+                    withApplicationAt: appURL,
+                    configuration: NSWorkspace.OpenConfiguration()
+                )
+                return
+            }
+        }
     }
 }
 

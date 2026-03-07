@@ -2,10 +2,15 @@ import Foundation
 import Markdown
 
 public enum MarkdownRenderer {
-    public static func renderHTML(from markdown: String, title: String = "") -> String {
+    public static func renderHTML(from markdown: String, title: String = "", customCSS: String? = nil) -> String {
         let document = Document(parsing: markdown)
         var htmlVisitor = HTMLVisitor()
         let bodyHTML = htmlVisitor.visit(document)
+
+        var css = defaultCSS
+        if let custom = customCSS {
+            css += "\n" + custom
+        }
 
         return """
         <!DOCTYPE html>
@@ -13,7 +18,7 @@ public enum MarkdownRenderer {
         <head>
         <meta charset="utf-8">
         <title>\(escapeHTML(title))</title>
-        <style>\(defaultCSS)</style>
+        <style>\(css)</style>
         </head>
         <body>
         <h1 class="doctitle">\(escapeHTML(title))</h1>

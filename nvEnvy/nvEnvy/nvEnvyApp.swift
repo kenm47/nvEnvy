@@ -160,6 +160,12 @@ struct nvEnvyCommands: Commands {
             }
             .disabled(appState.selectedNoteID == nil)
 
+            Button("Preview in Marked") {
+                NotificationCenter.default.post(name: .nvEnvyOpenInMarked, object: nil)
+            }
+            .keyboardShortcut("m", modifiers: [.control, .command])
+            .disabled(appState.selectedNoteID == nil)
+
             Divider()
 
             Button("Tag Note...") {
@@ -240,6 +246,7 @@ extension Notification.Name {
     static let nvEnvyPasteAsMarkdownLink = Notification.Name("nvEnvyPasteAsMarkdownLink")
     static let nvEnvyNoExternalEditor = Notification.Name("nvEnvyNoExternalEditor")
     static let nvEnvyShowBookmarks = Notification.Name("nvEnvyShowBookmarks")
+    static let nvEnvyOpenInMarked = Notification.Name("nvEnvyOpenInMarked")
 }
 
 // MARK: - App Delegate
