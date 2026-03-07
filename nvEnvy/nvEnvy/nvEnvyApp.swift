@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import NvEnvyCore
 import KeyboardShortcuts
+import Sparkle
 
 @main
 struct nvEnvyApp: App {
@@ -22,7 +23,7 @@ struct nvEnvyApp: App {
         .windowStyle(.titleBar)
         .defaultSize(width: 900, height: 600)
         .commands {
-            nvEnvyCommands(appState: appState)
+            nvEnvyCommands(appState: appState, updater: delegate.updaterController.updater)
         }
 
         Window("Markdown Preview", id: "preview") {
@@ -42,8 +43,16 @@ struct nvEnvyApp: App {
 
 struct nvEnvyCommands: Commands {
     let appState: AppState
+    let updater: SPUUpdater?
 
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            Button("Check for Updates...") {
+                updater?.checkForUpdates()
+            }
+            .disabled(updater == nil || !(updater?.canCheckForUpdates ?? false))
+        }
+
         CommandGroup(after: .importExport) {
             Button("Import Files...") {
                 let panel = NSOpenPanel()
@@ -254,6 +263,7 @@ extension Notification.Name {
 class AppDelegate: NSObject, NSApplicationDelegate {
     var appState: AppState?
     private let servicesProvider = NvEnvyServices()
+    let updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let appState = appState {

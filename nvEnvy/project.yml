@@ -39,6 +39,29 @@ targets:
             CFBundleURLSchemes:
               - nvenvy
               - nv
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Markdown
+            CFBundleTypeExtensions:
+              - md
+              - markdown
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+          - CFBundleTypeName: Plain Text
+            CFBundleTypeExtensions:
+              - txt
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+          - CFBundleTypeName: Rich Text
+            CFBundleTypeExtensions:
+              - rtf
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: None
+          - CFBundleTypeName: HTML
+            CFBundleTypeExtensions:
+              - html
+              - htm
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: None
     sources:
       - nvEnvy
     settings:
@@ -52,7 +75,9 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         CODE_SIGN_ENTITLEMENTS: nvEnvy/nvEnvy.entitlements
         ARCHS: "$(ARCHS_STANDARD)"
+        ENABLE_HARDENED_RUNTIME: YES
         GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - package: NvEnvyCore
       - package: KeyboardShortcuts
