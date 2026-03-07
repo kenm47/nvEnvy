@@ -44,6 +44,7 @@ private let kAppearanceOverrideKey = "appearanceOverride"
 private let kNoteListCollapsedKey = "noteListCollapsed"
 private let kUseReadabilityKey = "useReadabilityForURLImport"
 private let kConvertHTMLToMarkdownKey = "convertHTMLToMarkdown"
+private let kRightToLeftTextKey = "rightToLeftText"
 
 @MainActor
 @Observable
@@ -188,6 +189,11 @@ public final class AppState {
     }
     public var convertHTMLToMarkdown: Bool {
         didSet { UserDefaults.standard.set(convertHTMLToMarkdown, forKey: kConvertHTMLToMarkdownKey) }
+    }
+
+    // Right-to-left text
+    public var rightToLeftText: Bool {
+        didSet { UserDefaults.standard.set(rightToLeftText, forKey: kRightToLeftTextKey) }
     }
 
     // Note list collapsed
@@ -378,6 +384,7 @@ public final class AppState {
         self.autoSuggestWikilinks = ud.object(forKey: kAutoSuggestWikilinksKey) as? Bool ?? true
         self.useReadabilityForURLImport = ud.object(forKey: kUseReadabilityKey) as? Bool ?? true
         self.convertHTMLToMarkdown = ud.object(forKey: kConvertHTMLToMarkdownKey) as? Bool ?? true
+        self.rightToLeftText = ud.bool(forKey: kRightToLeftTextKey)
         self.noteListCollapsed = ud.bool(forKey: kNoteListCollapsedKey)
         self.appearanceOverride = AppearanceOverride(rawValue: ud.integer(forKey: kAppearanceOverrideKey)) ?? .system
 

@@ -115,6 +115,7 @@ struct EditingPreferencesView: View {
                 Toggle("Make URLs clickable", isOn: $appState.urlDetectionEnabled)
                 Toggle("Strikethrough @done lines", isOn: $appState.doneStrikethroughEnabled)
                 Toggle("Auto-suggest wikilinks", isOn: $appState.autoSuggestWikilinks)
+                Toggle("Right-to-left text direction", isOn: $appState.rightToLeftText)
             }
 
             Section("Search Highlighting") {

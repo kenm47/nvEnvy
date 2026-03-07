@@ -79,8 +79,16 @@ struct NoteTextEditor: NSViewRepresentable {
         textView.isContinuousSpellCheckingEnabled = appState.checkSpellingEnabled
         textView.textColor = appState.editorFGColor
         textView.backgroundColor = appState.editorBGColor
+        textView.baseWritingDirection = appState.rightToLeftText ? .rightToLeft : .leftToRight
 
         context.coordinator.textView = textView
+
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.handlePlainTextStyle(_:)),
+            name: .nvEnvyPlainTextStyle,
+            object: nil
+        )
 
         NotificationCenter.default.addObserver(
             context.coordinator,
@@ -112,6 +120,7 @@ struct NoteTextEditor: NSViewRepresentable {
         textView.backgroundColor = appState.editorBGColor
         textView.isAutomaticLinkDetectionEnabled = appState.urlDetectionEnabled
         textView.isContinuousSpellCheckingEnabled = appState.checkSpellingEnabled
+        textView.baseWritingDirection = appState.rightToLeftText ? .rightToLeft : .leftToRight
 
         coordinator.highlightSearchTerms(in: textView)
         coordinator.highlightWikilinks(in: textView)
@@ -517,6 +526,33 @@ struct NoteTextEditor: NSViewRepresentable {
                 textView.insertText(markers, replacementRange: selectedRange)
                 textView.setSelectedRange(NSRange(location: selectedRange.location + prefix.count, length: 0))
             }
+        }
+
+        // MARK: - Plain Text Style
+
+        @objc func handlePlainTextStyle(_ notification: Notification) {
+            guard let textView = textView else { return }
+            let selectedRange = textView.selectedRange()
+            guard selectedRange.length > 0 else { return }
+
+            var text = (textView.string as NSString).substring(with: selectedRange)
+
+            // Strip bold **text** or __text__
+            text = text.replacingOccurrences(of: "\\*\\*(.+?)\\*\\*", with: "$1", options: .regularExpression)
+            text = text.replacingOccurrences(of: "__(.+?)__", with: "$1", options: .regularExpression)
+            // Strip italic _text_ or *text*
+            text = text.replacingOccurrences(of: "(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)", with: "$1", options: .regularExpression)
+            text = text.replacingOccurrences(of: "(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", with: "$1", options: .regularExpression)
+            // Strip strikethrough ~~text~~
+            text = text.replacingOccurrences(of: "~~(.+?)~~", with: "$1", options: .regularExpression)
+            // Strip inline code `text`
+            text = text.replacingOccurrences(of: "`([^`]+)`", with: "$1", options: .regularExpression)
+            // Strip link syntax [text](url) → text
+            text = text.replacingOccurrences(of: "\\[([^\\]]+)\\]\\([^)]+\\)", with: "$1", options: .regularExpression)
+            // Strip heading prefixes
+            text = text.replacingOccurrences(of: "(?m)^#{1,6}\\s+", with: "", options: .regularExpression)
+
+            textView.insertText(text, replacementRange: selectedRange)
         }
 
         // MARK: - Paste as Markdown Link

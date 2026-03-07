@@ -138,6 +138,13 @@ struct nvEnvyCommands: Commands {
                 postFormattingCommand(.outdent)
             }
             .keyboardShortcut("[", modifiers: .command)
+
+            Divider()
+
+            Button("Plain Text Style") {
+                NotificationCenter.default.post(name: .nvEnvyPlainTextStyle, object: nil)
+            }
+            .keyboardShortcut("t", modifiers: .command)
         }
 
         CommandGroup(after: .sidebar) {
@@ -155,6 +162,19 @@ struct nvEnvyCommands: Commands {
                 appState.noteListCollapsed.toggle()
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Toggle Preview Source") {
+                NotificationCenter.default.post(name: .nvEnvyTogglePreviewSource, object: nil)
+            }
+            .keyboardShortcut("u", modifiers: [.command, .option])
+
+            Button("Save Preview as HTML...") {
+                NotificationCenter.default.post(name: .nvEnvySavePreviewHTML, object: nil)
+            }
+
+            Divider()
 
             Picker("Note List Style", selection: Binding(
                 get: { appState.noteListDisplayMode },
@@ -270,6 +290,9 @@ extension Notification.Name {
     static let nvEnvyOpenInMarked = Notification.Name("nvEnvyOpenInMarked")
     static let nvEnvyFocusSearchField = Notification.Name("nvEnvyFocusSearchField")
     static let nvEnvyShowConflicts = Notification.Name("nvEnvyShowConflicts")
+    static let nvEnvyPlainTextStyle = Notification.Name("nvEnvyPlainTextStyle")
+    static let nvEnvyTogglePreviewSource = Notification.Name("nvEnvyTogglePreviewSource")
+    static let nvEnvySavePreviewHTML = Notification.Name("nvEnvySavePreviewHTML")
 }
 
 // MARK: - App Delegate

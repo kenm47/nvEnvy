@@ -78,6 +78,12 @@ struct PreviewWindow: View {
         .onChange(of: note?.body) { _, _ in scheduleRender() }
         .onChange(of: noteID) { _, _ in renderNow() }
         .onAppear { renderNow() }
+        .onReceive(NotificationCenter.default.publisher(for: .nvEnvyTogglePreviewSource)) { _ in
+            showSource.toggle()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nvEnvySavePreviewHTML)) { _ in
+            saveHTML()
+        }
     }
 
     private func scheduleRender() {
