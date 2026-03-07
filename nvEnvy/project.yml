@@ -25,6 +25,15 @@ targets:
       properties:
         NSAppleScriptEnabled: true
         OSAScriptingDefinition: nvEnvy.sdef
+        NSServices:
+          - NSMenuItem:
+              default: "nvEnvy: New Note from Selection"
+            NSMessage: createFromSelection
+            NSPortName: nvEnvy
+            NSSendTypes:
+              - public.utf8-plain-text
+              - public.rtf
+              - public.html
         CFBundleURLTypes:
           - CFBundleURLName: nvEnvy URL Scheme
             CFBundleURLSchemes:

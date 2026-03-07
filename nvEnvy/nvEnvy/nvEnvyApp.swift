@@ -246,11 +246,15 @@ extension Notification.Name {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var appState: AppState?
+    private let servicesProvider = NvEnvyServices()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let appState = appState {
             AppIntentsBridge.shared.appState = appState
+            servicesProvider.appState = appState
         }
+        NSApp.servicesProvider = servicesProvider
+        NSUpdateDynamicServices()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
