@@ -96,6 +96,42 @@ final class SearchEngineTests: XCTestCase {
         XCTAssertEqual(match?.title, "Test Note")
     }
 
+    func testMixedQuotedUnquotedTokens() {
+        let notes = [
+            Note(title: "Note A", body: "hello world swift programming"),
+            Note(title: "Note B", body: "hello world python guide"),
+            Note(title: "Note C", body: "hello test world swift"),
+        ]
+        let results = engine.filter(notes: notes, query: "\"hello world\" swift")
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results[0].title, "Note A")
+    }
+
+    func testAutocompleteTitlePrefix() {
+        let notes = [
+            Note(title: "Apple Pie Recipe"),
+            Note(title: "Banana Split"),
+            Note(title: "Application Notes"),
+        ]
+        let match = engine.autocompleteTitlePrefix(notes: notes, query: "app")
+        XCTAssertNotNil(match)
+        XCTAssertTrue(match!.title.lowercased().hasPrefix("app"))
+    }
+
+    func testAutocompleteTitlePrefixNoMatch() {
+        let notes = [
+            Note(title: "Banana Split"),
+        ]
+        let match = engine.autocompleteTitlePrefix(notes: notes, query: "app")
+        XCTAssertNil(match)
+    }
+
+    func testAutocompleteTitlePrefixEmpty() {
+        let notes = [Note(title: "Test")]
+        let match = engine.autocompleteTitlePrefix(notes: notes, query: "")
+        XCTAssertNil(match)
+    }
+
     func testPerformanceAt1KNotes() {
         let notes = (0..<1000).map { i in
             Note(

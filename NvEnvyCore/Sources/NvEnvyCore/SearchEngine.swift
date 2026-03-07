@@ -49,6 +49,12 @@ public struct SearchEngine: Sendable {
         return notes.first { $0.cachedLowercaseTitle == lowerQuery }
     }
 
+    public func autocompleteTitlePrefix(notes: [Note], query: String) -> Note? {
+        guard !query.isEmpty else { return nil }
+        let lowerQuery = query.lowercased()
+        return notes.first { $0.cachedLowercaseTitle.hasPrefix(lowerQuery) }
+    }
+
     private func tokenize(_ query: String) -> [String] {
         var tokens: [String] = []
         var current = query[query.startIndex...]
