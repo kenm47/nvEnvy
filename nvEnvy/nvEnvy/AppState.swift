@@ -768,7 +768,7 @@ public final class AppState {
         guard let note = note(for: noteID) else { return }
 
         let panel = NSSavePanel()
-        panel.allowedContentTypes = [.plainText, .rtf, .html]
+        panel.allowedContentTypes = [.plainText, .rtf, .html, UTType(filenameExtension: "doc")!]
         panel.nameFieldStringValue = note.title
         panel.canSelectHiddenExtension = true
 
@@ -784,6 +784,10 @@ public final class AppState {
                 try? html.write(to: url, atomically: true, encoding: .utf8)
             case "rtf":
                 if let data = await service.exportAsRTF(note) {
+                    try? data.write(to: url)
+                }
+            case "doc":
+                if let data = await service.exportAsWord(note) {
                     try? data.write(to: url)
                 }
             default:

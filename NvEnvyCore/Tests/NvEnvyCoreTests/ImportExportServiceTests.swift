@@ -206,6 +206,38 @@ final class ImportExportServiceTests: XCTestCase {
         XCTAssertFalse(extracted.contains("Footer"))
     }
 
+    // MARK: - RTFD Import
+
+    func testImportRTFDBundle() async throws {
+        // Create a minimal RTFD bundle programmatically
+        let rtfdDir = tempDir.appendingPathComponent("test.rtfd")
+        try FileManager.default.createDirectory(at: rtfdDir, withIntermediateDirectories: true)
+
+        // Write a simple RTF file inside the bundle
+        let rtfContent = "{\\rtf1\\ansi\\pard Hello from RTFD\\par}"
+        let rtfFile = rtfdDir.appendingPathComponent("TXT.rtf")
+        try rtfContent.write(to: rtfFile, atomically: true, encoding: .utf8)
+
+        let imported = try await service.importFile(at: rtfdDir)
+        XCTAssertEqual(imported.title, "test")
+        XCTAssertTrue(imported.body.contains("Hello from RTFD"))
+    }
+
+    // MARK: - Word Export
+
+    func testExportAsWordRoundTrip() async throws {
+        let note = Note(title: "Word Test", body: "Word export content")
+        let data = await service.exportAsWord(note)
+        XCTAssertNotNil(data)
+
+        // Write and re-import
+        let file = tempDir.appendingPathComponent("exported.doc")
+        try data!.write(to: file)
+
+        let reimported = try await service.importFile(at: file)
+        XCTAssertTrue(reimported.body.contains("Word export content"))
+    }
+
     func testExtractArticleContentFallsBackToLargestDiv() {
         let html = """
         <html><body>

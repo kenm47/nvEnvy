@@ -21,8 +21,8 @@ public struct ImportedNote: Sendable {
 public actor ImportExportService {
 
     public static let supportedExtensions: Set<String> = [
-        "txt", "text", "utf8", "md", "markdown", "mmd", "rtf", "htm", "html",
-        "pdf", "doc", "docx"
+        "txt", "text", "utf8", "md", "markdown", "mmd", "rtf", "rtfd", "htm", "html",
+        "pdf", "doc", "docx", "webarchive"
     ]
 
     public init() {}
@@ -32,6 +32,12 @@ public actor ImportExportService {
     public func importFile(at url: URL) throws -> ImportedNote {
         let ext = url.pathExtension.lowercased()
         let title = url.deletingPathExtension().lastPathComponent
+
+        // RTFD is a directory bundle — handle before reading data
+        if ext == "rtfd" {
+            return try Self.importRTFD(at: url, title: title)
+        }
+
         let data = try Data(contentsOf: url)
 
         switch ext {
@@ -63,6 +69,9 @@ public actor ImportExportService {
 
         case "doc", "docx":
             return try Self.importWord(at: url, title: title)
+
+        case "webarchive":
+            return try Self.importWebArchive(at: url, title: title)
 
         default:
             throw ImportExportError.unsupportedFormat(ext)
@@ -185,6 +194,50 @@ public actor ImportExportService {
         throw ImportExportError.unsupportedFormat("doc")
         #endif
     }
+
+    // MARK: - RTFD Import
+
+    private static func importRTFD(at url: URL, title: String) throws -> ImportedNote {
+        #if canImport(AppKit)
+        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+            .documentType: NSAttributedString.DocumentType.rtfd
+        ]
+        if let attrStr = try? NSAttributedString(url: url, options: options, documentAttributes: nil) {
+            return ImportedNote(title: title, body: attrStr.string)
+        }
+        throw ImportExportError.encodingError
+        #else
+        throw ImportExportError.unsupportedFormat("rtfd")
+        #endif
+    }
+
+    // MARK: - Web Archive Import
+
+    private static func importWebArchive(at url: URL, title: String) throws -> ImportedNote {
+        #if canImport(AppKit)
+        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+            .documentType: NSAttributedString.DocumentType.webArchive
+        ]
+        if let attrStr = try? NSAttributedString(url: url, options: options, documentAttributes: nil) {
+            return ImportedNote(title: title, body: attrStr.string)
+        }
+        throw ImportExportError.encodingError
+        #else
+        throw ImportExportError.unsupportedFormat("webarchive")
+        #endif
+    }
+
+    // MARK: - Word Export
+
+    #if canImport(AppKit)
+    public func exportAsWord(_ note: Note) -> Data? {
+        let attrStr = NSAttributedString(string: note.body)
+        return try? attrStr.data(
+            from: NSRange(location: 0, length: attrStr.length),
+            documentAttributes: [.documentType: NSAttributedString.DocumentType.docFormat]
+        )
+    }
+    #endif
 
     // MARK: - HTML Stripping
 
