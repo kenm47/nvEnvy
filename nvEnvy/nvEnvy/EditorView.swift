@@ -140,6 +140,8 @@ struct NoteTextEditor: NSViewRepresentable {
                   let noteID = currentNoteID else { return }
             appState.updateNoteBody(noteID: noteID, body: textView.string)
             highlightWikilinks(in: textView)
+            applyDoneStrikethrough(in: textView)
+            checkWikilinkAutocomplete(in: textView)
         }
 
         // MARK: - Key handling for auto-behaviors
@@ -285,6 +287,7 @@ struct NoteTextEditor: NSViewRepresentable {
         func applyTextAttributes(_ textView: NSTextView) {
             highlightWikilinks(in: textView)
             highlightSearchTerms(in: textView)
+            applyDoneStrikethrough(in: textView)
         }
 
         func highlightWikilinks(in textView: NSTextView) {
@@ -323,6 +326,140 @@ struct NoteTextEditor: NSViewRepresentable {
                 textStorage.addAttribute(.backgroundColor, value: color, range: foundRange)
                 searchRange.location = foundRange.location + foundRange.length
                 searchRange.length = nsText.length - searchRange.location
+            }
+        }
+
+        // MARK: - @done Strikethrough
+
+        func applyDoneStrikethrough(in textView: NSTextView) {
+            guard appState.doneStrikethroughEnabled,
+                  let textStorage = textView.textStorage else { return }
+            let text = textView.string as NSString
+            let fullRange = NSRange(location: 0, length: text.length)
+
+            textStorage.removeAttribute(.strikethroughStyle, range: fullRange)
+
+            text.enumerateSubstrings(in: fullRange, options: .byLines) { line, lineRange, _, _ in
+                guard let line else { return }
+                if line.contains("@done") {
+                    textStorage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: lineRange)
+                }
+            }
+        }
+
+        // MARK: - Wikilink Autocomplete
+
+        private var wikilinkMenu: NSMenu?
+
+        func checkWikilinkAutocomplete(in textView: NSTextView) {
+            guard appState.autoSuggestWikilinks else { return }
+
+            let text = textView.string as NSString
+            let cursorLocation = textView.selectedRange().location
+
+            guard cursorLocation >= 2 else {
+                wikilinkMenu?.cancelTracking()
+                wikilinkMenu = nil
+                return
+            }
+
+            // Find [[ before cursor
+            var bracketStart: Int?
+            var i = cursorLocation - 1
+            while i >= 1 {
+                let twoChars = text.substring(with: NSRange(location: i - 1, length: 2))
+                if twoChars == "[[" {
+                    bracketStart = i + 1
+                    break
+                }
+                // If we hit ]] or newline, no open bracket
+                if twoChars == "]]" { break }
+                let ch = text.character(at: i)
+                if ch == 0x0A || ch == 0x0D { break }
+                i -= 1
+            }
+
+            guard let start = bracketStart, start <= cursorLocation else {
+                wikilinkMenu?.cancelTracking()
+                wikilinkMenu = nil
+                return
+            }
+
+            let partial = text.substring(with: NSRange(location: start, length: cursorLocation - start)).lowercased()
+            let matches = appState.allNotes
+                .filter { $0.cachedLowercaseTitle.contains(partial) }
+                .prefix(10)
+
+            guard !matches.isEmpty else {
+                wikilinkMenu?.cancelTracking()
+                wikilinkMenu = nil
+                return
+            }
+
+            let menu = NSMenu()
+            for note in matches {
+                let item = NSMenuItem(title: note.title, action: #selector(insertWikilinkCompletion(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = note.title
+                menu.addItem(item)
+            }
+
+            let glyphRange = textView.layoutManager?.glyphRange(forCharacterRange: NSRange(location: cursorLocation, length: 0), actualCharacterRange: nil) ?? NSRange(location: cursorLocation, length: 0)
+            let rect = textView.layoutManager?.boundingRect(forGlyphRange: glyphRange, in: textView.textContainer!) ?? .zero
+            let screenPoint = NSPoint(x: rect.origin.x + textView.textContainerInset.width, y: rect.maxY + textView.textContainerInset.height + 4)
+
+            wikilinkMenu?.cancelTracking()
+            wikilinkMenu = menu
+            menu.popUp(positioning: nil, at: screenPoint, in: textView)
+        }
+
+        @objc func insertWikilinkCompletion(_ sender: NSMenuItem) {
+            guard let textView = textView,
+                  let title = sender.representedObject as? String else { return }
+
+            let text = textView.string as NSString
+            let cursor = textView.selectedRange().location
+
+            // Find the [[ before cursor
+            var bracketStart: Int?
+            var i = cursor - 1
+            while i >= 1 {
+                let twoChars = text.substring(with: NSRange(location: i - 1, length: 2))
+                if twoChars == "[[" {
+                    bracketStart = i - 1
+                    break
+                }
+                if twoChars == "]]" { break }
+                let ch = text.character(at: i)
+                if ch == 0x0A || ch == 0x0D { break }
+                i -= 1
+            }
+
+            guard let start = bracketStart else { return }
+            let replaceRange = NSRange(location: start, length: cursor - start)
+            let replacement = "[[\(title)]]"
+            textView.insertText(replacement, replacementRange: replaceRange)
+            wikilinkMenu = nil
+        }
+
+        // MARK: - Insert Link (⌘⇧L)
+
+        func insertLink(in textView: NSTextView) {
+            let pasteboard = NSPasteboard.general
+            guard let clipboardString = pasteboard.string(forType: .string),
+                  let _ = URL(string: clipboardString),
+                  clipboardString.hasPrefix("http") else { return }
+
+            let selectedRange = textView.selectedRange()
+            if selectedRange.length > 0 {
+                let selectedText = (textView.string as NSString).substring(with: selectedRange)
+                let markdown = "[\(selectedText)](\(clipboardString))"
+                textView.insertText(markdown, replacementRange: selectedRange)
+            } else {
+                let markdown = "[](\(clipboardString))"
+                textView.insertText(markdown, replacementRange: selectedRange)
+                // Place cursor between the brackets
+                textView.setSelectedRange(NSRange(location: selectedRange.location + 1, length: 0))
             }
         }
 

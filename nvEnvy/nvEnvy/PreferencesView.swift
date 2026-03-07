@@ -50,6 +50,11 @@ struct GeneralPreferencesView: View {
             }
 
             Section("Appearance") {
+                Picker("Appearance:", selection: $appState.appearanceOverride) {
+                    ForEach(AppState.AppearanceOverride.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
                 Toggle("Show dock icon", isOn: $appState.showDockIcon)
                 Toggle("Show status bar item", isOn: $appState.showStatusBarItem)
 
@@ -108,6 +113,8 @@ struct EditingPreferencesView: View {
                 Toggle("Auto-indent new lines", isOn: $appState.autoIndentEnabled)
                 Toggle("Auto-format list bullets", isOn: $appState.autoListEnabled)
                 Toggle("Make URLs clickable", isOn: $appState.urlDetectionEnabled)
+                Toggle("Strikethrough @done lines", isOn: $appState.doneStrikethroughEnabled)
+                Toggle("Auto-suggest wikilinks", isOn: $appState.autoSuggestWikilinks)
             }
 
             Section("Search Highlighting") {

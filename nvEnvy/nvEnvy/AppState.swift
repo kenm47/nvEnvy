@@ -38,6 +38,9 @@ private let kAlternatingRowColorsKey = "alternatingRowColors"
 private let kShowTagsColumnKey = "showTagsColumn"
 private let kShowModifiedColumnKey = "showModifiedColumn"
 private let kShowCreatedColumnKey = "showCreatedColumn"
+private let kDoneStrikethroughKey = "doneStrikethrough"
+private let kAutoSuggestWikilinksKey = "autoSuggestWikilinks"
+private let kAppearanceOverrideKey = "appearanceOverride"
 
 @MainActor
 @Observable
@@ -164,6 +167,38 @@ public final class AppState {
     }
     public var showCreatedColumn: Bool {
         didSet { UserDefaults.standard.set(showCreatedColumn, forKey: kShowCreatedColumnKey) }
+    }
+
+    // @done strikethrough
+    public var doneStrikethroughEnabled: Bool {
+        didSet { UserDefaults.standard.set(doneStrikethroughEnabled, forKey: kDoneStrikethroughKey) }
+    }
+
+    // Wikilink autocomplete
+    public var autoSuggestWikilinks: Bool {
+        didSet { UserDefaults.standard.set(autoSuggestWikilinks, forKey: kAutoSuggestWikilinksKey) }
+    }
+
+    // Appearance override
+    public var appearanceOverride: AppearanceOverride {
+        didSet {
+            UserDefaults.standard.set(appearanceOverride.rawValue, forKey: kAppearanceOverrideKey)
+            applyAppearanceOverride(appearanceOverride)
+        }
+    }
+
+    public enum AppearanceOverride: Int, CaseIterable {
+        case system = 0
+        case light = 1
+        case dark = 2
+
+        public var displayName: String {
+            switch self {
+            case .system: return "System"
+            case .light: return "Light"
+            case .dark: return "Dark"
+            }
+        }
     }
 
     public enum SortField: Int, CaseIterable {
@@ -323,8 +358,12 @@ public final class AppState {
         self.showTagsColumn = ud.object(forKey: kShowTagsColumnKey) as? Bool ?? true
         self.showModifiedColumn = ud.object(forKey: kShowModifiedColumnKey) as? Bool ?? true
         self.showCreatedColumn = ud.bool(forKey: kShowCreatedColumnKey)
+        self.doneStrikethroughEnabled = ud.object(forKey: kDoneStrikethroughKey) as? Bool ?? true
+        self.autoSuggestWikilinks = ud.object(forKey: kAutoSuggestWikilinksKey) as? Bool ?? true
+        self.appearanceOverride = AppearanceOverride(rawValue: ud.integer(forKey: kAppearanceOverrideKey)) ?? .system
 
         restoreNotesFolder()
+        applyAppearanceOverride(appearanceOverride)
 
         // Set up status bar after init
         let controller = StatusBarController(appState: self)
@@ -849,6 +888,19 @@ public final class AppState {
             allNotes.append(note)
             performSearch()
             selectedNoteID = note.id
+        }
+    }
+
+    // MARK: - Appearance
+
+    private func applyAppearanceOverride(_ override: AppearanceOverride) {
+        switch override {
+        case .system:
+            NSApp.appearance = nil
+        case .light:
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark:
+            NSApp.appearance = NSAppearance(named: .darkAqua)
         }
     }
 
