@@ -726,6 +726,18 @@ public final class AppState {
         filteredNotes = allNotes
     }
 
+    // MARK: - Intent Support
+
+    public func createNoteFromIntent(title: String, body: String, tags: [String]) {
+        Task {
+            guard let store = noteStore else { return }
+            let note = try await store.addImportedNote(title: title, body: body, tags: tags)
+            allNotes.append(note)
+            performSearch()
+            selectedNoteID = note.id
+        }
+    }
+
     // MARK: - Flush on quit
 
     public func flushBeforeQuit() async {

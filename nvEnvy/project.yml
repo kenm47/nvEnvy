@@ -23,6 +23,8 @@ targets:
     info:
       path: nvEnvy/Info.plist
       properties:
+        NSAppleScriptEnabled: true
+        OSAScriptingDefinition: nvEnvy.sdef
         CFBundleURLTypes:
           - CFBundleURLName: nvEnvy URL Scheme
             CFBundleURLSchemes:

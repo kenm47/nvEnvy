@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dictionary SYSTEM "file://localhost/System/Library/DTDs/sdef.dtd">
+<dictionary title="nvEnvy Terminology">
+    <suite name="nvEnvy Suite" code="nVnv" description="nvEnvy scripting commands">
+        <command name="search" code="nVnvSrch" description="Search for notes matching a term">
+            <direct-parameter type="text" description="The search term"/>
+        </command>
+        <command name="create note" code="nVnvCrNt" description="Create a new note">
+            <parameter name="title" code="titl" type="text" description="The note title"/>
+            <parameter name="body" code="body" type="text" optional="yes" description="The note body"/>
+            <parameter name="tags" code="tags" type="text" optional="yes" description="Comma-separated tags"/>
+        </command>
+    </suite>
+</dictionary>

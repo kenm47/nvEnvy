@@ -247,6 +247,12 @@ extension Notification.Name {
 class AppDelegate: NSObject, NSApplicationDelegate {
     var appState: AppState?
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        if let appState = appState {
+            AppIntentsBridge.shared.appState = appState
+        }
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         appState?.closeAction == .quit
     }
@@ -268,5 +274,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             semaphore.signal()
         }
         semaphore.wait(timeout: .now() + 5)
+    }
+
+    // MARK: - AppleScript Support
+
+    func application(_ sender: NSApplication, delegateHandlesKey key: String) -> Bool {
+        key == "scriptingSearch" || key == "scriptingCreateNote"
+    }
+
+    @objc var scriptingSearch: String {
+        get {
+            DispatchQueue.main.sync { appState?.searchQuery ?? "" }
+        }
+        set {
+            DispatchQueue.main.async { [weak self] in
+                self?.appState?.searchQuery = newValue
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
     }
 }
