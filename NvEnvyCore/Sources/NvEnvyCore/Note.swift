@@ -1,5 +1,13 @@
 import Foundation
 
+public enum SyncStatus: Int, Sendable {
+    case local = 0
+    case uploading = 1
+    case downloading = 2
+    case current = 3
+    case conflict = 4
+}
+
 public final class Note: Identifiable, @unchecked Sendable {
     public let id: UUID
     public var title: String
@@ -12,6 +20,7 @@ public final class Note: Identifiable, @unchecked Sendable {
     public var fileSize: UInt64?
     public var fileEncoding: String.Encoding
     public var selectedRange: NSRange?
+    public var syncStatus: SyncStatus = .local
 
     // Search optimization: cached lowercase strings
     public var cachedLowercaseTitle: String

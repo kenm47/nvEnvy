@@ -114,6 +114,13 @@ public actor NoteStore {
         dirtyNoteIDs.remove(noteID)
     }
 
+    // MARK: - Sync Status
+
+    public func updateSyncStatus(filename: String, status: SyncStatus) {
+        guard let note = notes.values.first(where: { $0.filename == filename }) else { return }
+        note.syncStatus = status
+    }
+
     // MARK: - Dirty Tracking & Flush
 
     public func markDirty(_ noteID: UUID) {

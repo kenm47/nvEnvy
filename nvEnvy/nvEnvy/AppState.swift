@@ -233,6 +233,27 @@ public final class AppState {
         return Array(Set(tagSets)).sorted()
     }
 
+    // Sync health
+    public var syncHealthSummary: String {
+        let uploading = allNotes.filter { $0.syncStatus == .uploading }.count
+        let downloading = allNotes.filter { $0.syncStatus == .downloading }.count
+        let conflicts = allNotes.filter { $0.syncStatus == .conflict }.count
+
+        if conflicts > 0 {
+            return "\(conflicts) conflict\(conflicts == 1 ? "" : "s")"
+        }
+        if uploading > 0 && downloading > 0 {
+            return "Uploading \(uploading), downloading \(downloading)"
+        }
+        if uploading > 0 {
+            return "Uploading \(uploading) note\(uploading == 1 ? "" : "s")"
+        }
+        if downloading > 0 {
+            return "Downloading \(downloading) note\(downloading == 1 ? "" : "s")"
+        }
+        return "All synced"
+    }
+
     // Snapback stack for URL navigation
     public var snapbackStack: [Note.ID] = []
     public var hasSnapback: Bool { !snapbackStack.isEmpty }
@@ -244,6 +265,7 @@ public final class AppState {
     private var storageService: FileStorageService?
     private var searchEngine = SearchEngine()
     private var fileMonitor: FileSystemMonitor?
+    private var icloudMonitor: ICloudStatusMonitor?
 
     public enum ColorScheme: Int, CaseIterable {
         case blackWhite = 0
@@ -405,6 +427,10 @@ public final class AppState {
             }
         }
         fileMonitor?.start()
+
+        icloudMonitor?.stop()
+        icloudMonitor = ICloudStatusMonitor(notesDirectory: url, appState: self)
+        icloudMonitor?.start()
 
         Task {
             try? await store.loadAll()
@@ -823,6 +849,17 @@ public final class AppState {
             allNotes.append(note)
             performSearch()
             selectedNoteID = note.id
+        }
+    }
+
+    // MARK: - Sync Status
+
+    public func updateSyncStatus(filename: String, status: SyncStatus) {
+        if let note = allNotes.first(where: { $0.filename == filename }) {
+            note.syncStatus = status
+        }
+        Task {
+            await noteStore?.updateSyncStatus(filename: filename, status: status)
         }
     }
 

@@ -176,9 +176,13 @@ struct NoteRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(note.title)
-                .font(.system(size: appState.tableFontSize))
-                .lineLimit(1)
+            HStack(spacing: 4) {
+                Text(note.title)
+                    .font(.system(size: appState.tableFontSize))
+                    .lineLimit(1)
+
+                SyncStatusIcon(status: note.syncStatus)
+            }
 
             if appState.showTagsColumn && !note.tags.isEmpty {
                 HStack(spacing: 4) {
@@ -218,9 +222,13 @@ struct NotePreviewRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(note.title)
-                .font(.system(size: appState.tableFontSize).bold())
-                .lineLimit(1)
+            HStack(spacing: 4) {
+                Text(note.title)
+                    .font(.system(size: appState.tableFontSize).bold())
+                    .lineLimit(1)
+
+                SyncStatusIcon(status: note.syncStatus)
+            }
 
             if !firstLine.isEmpty {
                 Text(firstLine)
@@ -263,5 +271,31 @@ struct TagPill: View {
         let hash = abs(tag.hashValue)
         let colors: [Color] = [.blue, .green, .orange, .purple, .red, .teal, .pink, .indigo]
         return colors[hash % colors.count]
+    }
+}
+
+struct SyncStatusIcon: View {
+    let status: SyncStatus
+
+    var body: some View {
+        switch status {
+        case .local, .current:
+            EmptyView()
+        case .uploading:
+            Image(systemName: "cloud.fill")
+                .font(.caption2)
+                .foregroundStyle(.blue)
+                .accessibilityLabel("Uploading")
+        case .downloading:
+            Image(systemName: "arrow.down.circle")
+                .font(.caption2)
+                .foregroundStyle(.blue)
+                .accessibilityLabel("Downloading")
+        case .conflict:
+            Image(systemName: "exclamationmark.triangle")
+                .font(.caption2)
+                .foregroundStyle(.orange)
+                .accessibilityLabel("Sync conflict")
+        }
     }
 }
