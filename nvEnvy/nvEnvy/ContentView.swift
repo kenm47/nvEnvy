@@ -87,6 +87,10 @@ struct WelcomeView: View {
         FileManager.default.fileExists(atPath: NSString("~/Library/Mobile Documents/com~apple~CloudDocs").expandingTildeInPath)
     }
 
+    private var nvALTPath: URL? {
+        NvALTImporter.detectNvALTInstallation()
+    }
+
     var body: some View {
         VStack(spacing: 24) {
             Image(systemName: "note.text")
@@ -137,6 +141,17 @@ struct WelcomeView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
+
+                if nvALTPath != nil {
+                    Button {
+                        importFromNvALT()
+                    } label: {
+                        Label("Import from nvALT", systemImage: "square.and.arrow.down")
+                            .frame(maxWidth: 260)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -174,6 +189,29 @@ struct WelcomeView: View {
         panel.prompt = "Choose"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         appState.setNotesFolder(url)
+        showQuickTipsIfNeeded()
+    }
+
+    private func importFromNvALT() {
+        // First choose destination folder
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Choose a folder for your imported notes"
+        panel.prompt = "Choose"
+        guard panel.runModal() == .OK, let destURL = panel.url else { return }
+        appState.setNotesFolder(destURL)
+
+        // Import nvALT notes
+        guard let nvALTDir = nvALTPath else { return }
+        Task {
+            let service = ImportExportService()
+            let imported = await NvALTImporter.importNvALTNotes(from: nvALTDir, service: service)
+            for item in imported {
+                appState.importNvALTNote(item)
+            }
+        }
         showQuickTipsIfNeeded()
     }
 

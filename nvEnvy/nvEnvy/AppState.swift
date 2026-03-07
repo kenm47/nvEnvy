@@ -762,6 +762,19 @@ public final class AppState {
         }
     }
 
+    // MARK: - nvALT Import
+
+    public func importNvALTNote(_ imported: ImportedNote) {
+        Task {
+            guard let store = noteStore else { return }
+            let note = try? await store.addImportedNote(
+                title: imported.title, body: imported.body, tags: imported.tags
+            )
+            if let note { allNotes.append(note) }
+            performSearch()
+        }
+    }
+
     // MARK: - Export
 
     public func exportNote(noteID: UUID) {
