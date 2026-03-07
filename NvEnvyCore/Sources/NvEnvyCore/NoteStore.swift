@@ -6,9 +6,11 @@ public actor NoteStore {
     private let storage: FileStorageService
     private var flushTask: Task<Void, Never>?
     private let flushInterval: Duration = .seconds(2)
+    private let crashRecovery: CrashRecoveryService
 
-    public init(storage: FileStorageService) {
+    public init(storage: FileStorageService, crashRecovery: CrashRecoveryService? = nil) {
         self.storage = storage
+        self.crashRecovery = crashRecovery ?? CrashRecoveryService()
     }
 
     // MARK: - Load
@@ -17,6 +19,36 @@ public actor NoteStore {
         let loaded = try await storage.readAllNotes()
         for note in loaded {
             notes[note.id] = note
+        }
+
+        // Recover any pending WAL entries from a previous crash
+        if let recovered = try? await crashRecovery.recoverPendingNotes(), !recovered.isEmpty {
+            for rec in recovered {
+                if let existing = notes[rec.noteID] {
+                    // Only apply if WAL is newer
+                    if rec.timestamp > existing.modifiedDate {
+                        existing.title = rec.title
+                        existing.body = rec.body
+                        existing.tags = rec.tags
+                        existing.modifiedDate = rec.timestamp
+                        existing.invalidateSearchCache()
+                        dirtyNoteIDs.insert(rec.noteID)
+                    }
+                } else {
+                    // Note not on disk yet — recreate from WAL
+                    let note = Note(
+                        id: rec.noteID,
+                        title: rec.title,
+                        body: rec.body,
+                        tags: rec.tags,
+                        modifiedDate: rec.timestamp
+                    )
+                    notes[note.id] = note
+                    dirtyNoteIDs.insert(note.id)
+                }
+            }
+            // Flush recovered notes to disk
+            await flushDirtyNotes()
         }
     }
 
@@ -86,6 +118,11 @@ public actor NoteStore {
 
     public func markDirty(_ noteID: UUID) {
         dirtyNoteIDs.insert(noteID)
+        if let note = notes[noteID] {
+            Task {
+                try? await self.crashRecovery.appendRecord(note: note)
+            }
+        }
         scheduleFlush()
     }
 
@@ -102,6 +139,7 @@ public actor NoteStore {
         let ids = dirtyNoteIDs
         dirtyNoteIDs.removeAll()
 
+        var anyFailed = false
         for id in ids {
             guard let note = notes[id] else { continue }
             do {
@@ -109,7 +147,13 @@ public actor NoteStore {
             } catch {
                 // Re-mark as dirty on failure
                 dirtyNoteIDs.insert(id)
+                anyFailed = true
             }
+        }
+
+        // Truncate WAL only if all dirty notes flushed successfully
+        if !anyFailed {
+            try? await crashRecovery.truncate()
         }
     }
 
