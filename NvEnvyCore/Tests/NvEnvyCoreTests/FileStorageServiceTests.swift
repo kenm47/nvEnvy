@@ -136,6 +136,30 @@ final class FileStorageServiceTests: XCTestCase {
         XCTAssertEqual(notes.count, 0)
     }
 
+    func testCustomExtensionsRespected() async throws {
+        // Create storage with custom extensions including "org"
+        let customStorage = FileStorageService(notesDirectory: tempDir, allowedExtensions: Set(["md", "org"]))
+
+        let mdFile = tempDir.appendingPathComponent("note.md")
+        try "md content".write(to: mdFile, atomically: true, encoding: .utf8)
+
+        let orgFile = tempDir.appendingPathComponent("note.org")
+        try "org content".write(to: orgFile, atomically: true, encoding: .utf8)
+
+        let txtFile = tempDir.appendingPathComponent("note.txt")
+        try "txt content".write(to: txtFile, atomically: true, encoding: .utf8)
+
+        let notes = try await customStorage.readAllNotes()
+        XCTAssertEqual(notes.count, 2)
+
+        let titles = Set(notes.map(\.title))
+        XCTAssertTrue(titles.contains("note")) // both md and org have same title
+        let bodies = Set(notes.map(\.body))
+        XCTAssertTrue(bodies.contains("md content"))
+        XCTAssertTrue(bodies.contains("org content"))
+        XCTAssertFalse(bodies.contains("txt content"))
+    }
+
     func testNestedSubdirectories() async throws {
         let deep = tempDir.appendingPathComponent("a/b/c")
         try FileManager.default.createDirectory(at: deep, withIntermediateDirectories: true)

@@ -208,6 +208,7 @@ struct FontsColorsPreferencesView: View {
 
 struct DatabasePreferencesView: View {
     @Environment(AppState.self) private var appState
+    @State private var newExtension = ""
 
     var body: some View {
         @Bindable var appState = appState
@@ -227,9 +228,37 @@ struct DatabasePreferencesView: View {
                 }
             }
 
-            Section("Storage") {
-                Text("Format: Markdown (.md)")
-                    .foregroundStyle(.secondary)
+            Section("Allowed File Types") {
+                ForEach(Array(appState.allowedExtensions.enumerated()), id: \.offset) { index, ext in
+                    HStack {
+                        Text(".\(ext)")
+                        Spacer()
+                        if appState.allowedExtensions.count > 1 {
+                            Button(role: .destructive) {
+                                appState.allowedExtensions.remove(at: index)
+                            } label: {
+                                Image(systemName: "minus.circle")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                HStack {
+                    TextField("Extension", text: $newExtension)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 120)
+                    Button {
+                        let ext = newExtension.trimmingCharacters(in: .whitespacesAndNewlines)
+                            .lowercased()
+                            .replacingOccurrences(of: ".", with: "")
+                        guard !ext.isEmpty, !appState.allowedExtensions.contains(ext) else { return }
+                        appState.allowedExtensions.append(ext)
+                        newExtension = ""
+                    } label: {
+                        Image(systemName: "plus.circle")
+                    }
+                    .disabled(newExtension.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
             }
 
             Section("Finder Tags") {

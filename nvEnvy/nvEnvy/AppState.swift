@@ -45,6 +45,7 @@ private let kNoteListCollapsedKey = "noteListCollapsed"
 private let kUseReadabilityKey = "useReadabilityForURLImport"
 private let kConvertHTMLToMarkdownKey = "convertHTMLToMarkdown"
 private let kRightToLeftTextKey = "rightToLeftText"
+private let kAllowedExtensionsKey = "allowedExtensions"
 
 @MainActor
 @Observable
@@ -194,6 +195,15 @@ public final class AppState {
     // Right-to-left text
     public var rightToLeftText: Bool {
         didSet { UserDefaults.standard.set(rightToLeftText, forKey: kRightToLeftTextKey) }
+    }
+
+    // Allowed file extensions
+    public var allowedExtensions: [String] {
+        didSet {
+            if let data = try? JSONEncoder().encode(allowedExtensions) {
+                UserDefaults.standard.set(data, forKey: kAllowedExtensionsKey)
+            }
+        }
     }
 
     // Note list collapsed
@@ -385,6 +395,12 @@ public final class AppState {
         self.useReadabilityForURLImport = ud.object(forKey: kUseReadabilityKey) as? Bool ?? true
         self.convertHTMLToMarkdown = ud.object(forKey: kConvertHTMLToMarkdownKey) as? Bool ?? true
         self.rightToLeftText = ud.bool(forKey: kRightToLeftTextKey)
+        if let extData = ud.data(forKey: kAllowedExtensionsKey),
+           let exts = try? JSONDecoder().decode([String].self, from: extData) {
+            self.allowedExtensions = exts
+        } else {
+            self.allowedExtensions = ["md", "markdown", "mmd", "txt", "text"]
+        }
         self.noteListCollapsed = ud.bool(forKey: kNoteListCollapsedKey)
         self.appearanceOverride = AppearanceOverride(rawValue: ud.integer(forKey: kAppearanceOverrideKey)) ?? .system
 
@@ -483,7 +499,7 @@ public final class AppState {
     }
 
     private func setupStorage(url: URL) {
-        let storage = FileStorageService(notesDirectory: url)
+        let storage = FileStorageService(notesDirectory: url, allowedExtensions: Set(allowedExtensions))
         self.storageService = storage
         let store = NoteStore(storage: storage)
         self.noteStore = store
