@@ -51,6 +51,7 @@ struct GeneralPreferencesView: View {
 
             Section("Appearance") {
                 Toggle("Show dock icon", isOn: $appState.showDockIcon)
+                Toggle("Show status bar item", isOn: $appState.showStatusBarItem)
 
                 Picker("Note list style:", selection: $appState.noteListDisplayMode) {
                     ForEach(AppState.NoteListDisplayMode.allCases, id: \.self) { mode in

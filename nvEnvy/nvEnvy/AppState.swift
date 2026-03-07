@@ -29,6 +29,7 @@ private let kNoteListDisplayModeKey = "noteListDisplayMode"
 private let kLayoutOrientationKey = "layoutOrientation"
 private let kCloseActionKey = "closeAction"
 private let kMirrorFinderTagsKey = "mirrorFinderTags"
+private let kShowStatusBarItemKey = "showStatusBarItem"
 
 @MainActor
 @Observable
@@ -118,6 +119,18 @@ public final class AppState {
     public var mirrorFinderTags: Bool {
         didSet { UserDefaults.standard.set(mirrorFinderTags, forKey: kMirrorFinderTagsKey) }
     }
+    public var showStatusBarItem: Bool {
+        didSet {
+            UserDefaults.standard.set(showStatusBarItem, forKey: kShowStatusBarItemKey)
+            if showStatusBarItem {
+                statusBarController?.show()
+            } else {
+                statusBarController?.hide()
+            }
+        }
+    }
+
+    var statusBarController: StatusBarController?
 
     public enum NoteListDisplayMode: Int, CaseIterable {
         case standard = 0
@@ -229,8 +242,16 @@ public final class AppState {
         self.layoutOrientation = LayoutOrientation(rawValue: ud.integer(forKey: kLayoutOrientationKey)) ?? .horizontal
         self.closeAction = CloseAction(rawValue: ud.integer(forKey: kCloseActionKey)) ?? .quit
         self.mirrorFinderTags = ud.object(forKey: kMirrorFinderTagsKey) as? Bool ?? true
+        self.showStatusBarItem = ud.bool(forKey: kShowStatusBarItemKey)
 
         restoreNotesFolder()
+
+        // Set up status bar after init
+        let controller = StatusBarController(appState: self)
+        self.statusBarController = controller
+        if showStatusBarItem {
+            controller.show()
+        }
     }
 
     // MARK: - Color Persistence
