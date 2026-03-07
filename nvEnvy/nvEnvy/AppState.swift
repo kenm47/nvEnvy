@@ -41,6 +41,7 @@ private let kShowCreatedColumnKey = "showCreatedColumn"
 private let kDoneStrikethroughKey = "doneStrikethrough"
 private let kAutoSuggestWikilinksKey = "autoSuggestWikilinks"
 private let kAppearanceOverrideKey = "appearanceOverride"
+private let kNoteListCollapsedKey = "noteListCollapsed"
 
 @MainActor
 @Observable
@@ -177,6 +178,11 @@ public final class AppState {
     // Wikilink autocomplete
     public var autoSuggestWikilinks: Bool {
         didSet { UserDefaults.standard.set(autoSuggestWikilinks, forKey: kAutoSuggestWikilinksKey) }
+    }
+
+    // Note list collapsed
+    public var noteListCollapsed: Bool {
+        didSet { UserDefaults.standard.set(noteListCollapsed, forKey: kNoteListCollapsedKey) }
     }
 
     // Appearance override
@@ -360,10 +366,14 @@ public final class AppState {
         self.showCreatedColumn = ud.bool(forKey: kShowCreatedColumnKey)
         self.doneStrikethroughEnabled = ud.object(forKey: kDoneStrikethroughKey) as? Bool ?? true
         self.autoSuggestWikilinks = ud.object(forKey: kAutoSuggestWikilinksKey) as? Bool ?? true
+        self.noteListCollapsed = ud.bool(forKey: kNoteListCollapsedKey)
         self.appearanceOverride = AppearanceOverride(rawValue: ud.integer(forKey: kAppearanceOverrideKey)) ?? .system
 
         restoreNotesFolder()
-        applyAppearanceOverride(appearanceOverride)
+        // Defer appearance override until NSApp is available
+        DispatchQueue.main.async { [self] in
+            applyAppearanceOverride(appearanceOverride)
+        }
 
         // Set up status bar after init
         let controller = StatusBarController(appState: self)
@@ -918,13 +928,14 @@ public final class AppState {
     // MARK: - Appearance
 
     private func applyAppearanceOverride(_ override: AppearanceOverride) {
+        guard let app = NSApp else { return }
         switch override {
         case .system:
-            NSApp.appearance = nil
+            app.appearance = nil
         case .light:
-            NSApp.appearance = NSAppearance(named: .aqua)
+            app.appearance = NSAppearance(named: .aqua)
         case .dark:
-            NSApp.appearance = NSAppearance(named: .darkAqua)
+            app.appearance = NSAppearance(named: .darkAqua)
         }
     }
 

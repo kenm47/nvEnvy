@@ -36,6 +36,9 @@ struct SearchField: View {
         .padding(6)
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
         .onAppear { isFocused = true }
+        .onReceive(NotificationCenter.default.publisher(for: .nvEnvyFocusSearchField)) { _ in
+            isFocused = true
+        }
         .background(
             Button("") { isFocused = true }
                 .keyboardShortcut("l", modifiers: .command)

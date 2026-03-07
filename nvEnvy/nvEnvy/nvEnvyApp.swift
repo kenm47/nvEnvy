@@ -151,6 +151,11 @@ struct nvEnvyCommands: Commands {
             }
             .keyboardShortcut("l", modifiers: [.command, .option])
 
+            Button(appState.noteListCollapsed ? "Show Note List" : "Hide Note List") {
+                appState.noteListCollapsed.toggle()
+            }
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+
             Picker("Note List Style", selection: Binding(
                 get: { appState.noteListDisplayMode },
                 set: { appState.noteListDisplayMode = $0 }
@@ -256,6 +261,7 @@ extension Notification.Name {
     static let nvEnvyNoExternalEditor = Notification.Name("nvEnvyNoExternalEditor")
     static let nvEnvyShowBookmarks = Notification.Name("nvEnvyShowBookmarks")
     static let nvEnvyOpenInMarked = Notification.Name("nvEnvyOpenInMarked")
+    static let nvEnvyFocusSearchField = Notification.Name("nvEnvyFocusSearchField")
 }
 
 // MARK: - App Delegate

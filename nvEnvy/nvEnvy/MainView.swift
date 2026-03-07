@@ -45,7 +45,10 @@ struct MainView: View {
 
             Divider()
 
-            if appState.layoutOrientation == .vertical {
+            if appState.noteListCollapsed {
+                EditorView(selectedNoteID: appState.selectedNoteID)
+                    .frame(minWidth: 300)
+            } else if appState.layoutOrientation == .vertical {
                 VSplitView {
                     NoteListView(selectedNoteID: $appState.selectedNoteID)
                         .frame(minHeight: 100, maxHeight: 300)
@@ -124,6 +127,9 @@ struct KeyboardShortcutHandlers: View {
                 appState.layoutOrientation = appState.layoutOrientation == .horizontal ? .vertical : .horizontal
             }
             .keyboardShortcut("l", modifiers: [.command, .option])
+            // ⌘⇧C — collapse/expand note list
+            Button("") { appState.noteListCollapsed.toggle() }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
             // ⌘R — rename note
             Button("") { appState.startRename() }
                 .keyboardShortcut("r", modifiers: .command)

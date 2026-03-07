@@ -158,6 +158,10 @@ struct NoteTextEditor: NSViewRepresentable {
             if commandSelector == #selector(NSResponder.insertBacktab(_:)) {
                 return handleOutdent(textView)
             }
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                NotificationCenter.default.post(name: .nvEnvyFocusSearchField, object: nil)
+                return true
+            }
             return false
         }
 
