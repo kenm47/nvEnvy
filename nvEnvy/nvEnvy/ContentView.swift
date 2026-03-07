@@ -19,7 +19,7 @@ struct ContentView: View {
                     MainView()
                 }
             } else {
-                FolderPickerPrompt()
+                WelcomeView()
             }
         }
         .sheet(isPresented: $showTagEditor) {
@@ -79,32 +79,145 @@ struct ContentView: View {
     }
 }
 
-struct FolderPickerPrompt: View {
+struct WelcomeView: View {
     @Environment(AppState.self) private var appState
+    @State private var showQuickTips = false
 
-    var body: some View {
-        VStack(spacing: 20) {
-            Text(String(localized: "Welcome to nvEnvy"))
-                .font(.largeTitle)
-            Text(String(localized: "Choose a folder to store your notes."))
-                .foregroundStyle(.secondary)
-            Button(String(localized: "Choose Notes Folder...")) {
-                pickFolder()
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private var iCloudAvailable: Bool {
+        FileManager.default.fileExists(atPath: NSString("~/Library/Mobile Documents/com~apple~CloudDocs").expandingTildeInPath)
     }
 
-    private func pickFolder() {
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "note.text")
+                .font(.system(size: 48))
+                .foregroundStyle(.blue)
+
+            Text(String(localized: "Welcome to nvEnvy"))
+                .font(.largeTitle)
+
+            Text(String(localized: "A fast, keyboard-driven note-taking app."))
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 12) {
+                if iCloudAvailable {
+                    Button {
+                        createInICloud()
+                    } label: {
+                        Label("Create in iCloud Drive", systemImage: "icloud")
+                            .frame(maxWidth: 260)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                }
+
+                Button {
+                    createNewFolder()
+                } label: {
+                    Label(iCloudAvailable ? "Create in Documents" : "Create New Folder", systemImage: "folder.badge.plus")
+                        .frame(maxWidth: 260)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+
+                Button {
+                    chooseExistingFolder()
+                } label: {
+                    Label("Choose Existing Folder", systemImage: "folder")
+                        .frame(maxWidth: 260)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+
+                Button {
+                    openObsidianVault()
+                } label: {
+                    Label("Open Obsidian Vault", systemImage: "link")
+                        .frame(maxWidth: 260)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .bottom) {
+            if showQuickTips {
+                QuickTipsOverlay(isPresented: $showQuickTips)
+                    .padding(.bottom, 40)
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    private func createInICloud() {
+        let iCloudPath = NSString("~/Library/Mobile Documents/com~apple~CloudDocs/nvEnvy Notes").expandingTildeInPath
+        let url = URL(fileURLWithPath: iCloudPath)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        appState.setNotesFolder(url)
+        showQuickTipsIfNeeded()
+    }
+
+    private func createNewFolder() {
+        let docsPath = NSString("~/Documents/nvEnvy Notes").expandingTildeInPath
+        let url = URL(fileURLWithPath: docsPath)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        appState.setNotesFolder(url)
+        showQuickTipsIfNeeded()
+    }
+
+    private func chooseExistingFolder() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.message = "Select a folder for your notes"
         panel.prompt = "Choose"
-
         guard panel.runModal() == .OK, let url = panel.url else { return }
         appState.setNotesFolder(url)
+        showQuickTipsIfNeeded()
+    }
+
+    private func openObsidianVault() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Select your Obsidian vault folder"
+        panel.prompt = "Open"
+        panel.directoryURL = URL(fileURLWithPath: NSString("~/Documents").expandingTildeInPath)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        appState.setNotesFolder(url)
+        showQuickTipsIfNeeded()
+    }
+
+    private func showQuickTipsIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: "hasSeenQuickTips") else { return }
+        UserDefaults.standard.set(true, forKey: "hasSeenQuickTips")
+        withAnimation { showQuickTips = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+            withAnimation { showQuickTips = false }
+        }
+    }
+}
+
+struct QuickTipsOverlay: View {
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Quick Tips")
+                .font(.headline)
+            Group {
+                Label("**\u{2318}L** — Focus search field", systemImage: "magnifyingglass")
+                Label("**Return** — Create or select a note", systemImage: "return")
+                Label("**\u{2318}\u{21E7}T** — Edit tags", systemImage: "tag")
+                Label("**Escape** — Return to search", systemImage: "escape")
+            }
+            .font(.callout)
+        }
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .shadow(radius: 8)
+        .onTapGesture { withAnimation { isPresented = false } }
     }
 }
