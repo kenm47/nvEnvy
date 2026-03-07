@@ -3,222 +3,482 @@
   "strings" : {
     "Search or Create" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search or Create"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Search or Create" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Suchen oder Erstellen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rechercher ou créer" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Cerca o crea" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Pesquisar ou criar" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "搜索或新建" } }
       }
     },
     "Clear search" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear search"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear search" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Suche löschen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Effacer la recherche" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Cancella ricerca" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Limpar pesquisa" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清除搜索" } }
       }
     },
     "No notes" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No notes"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No notes" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Notizen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune note" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Nessuna nota" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sem notas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有笔记" } }
       }
     },
     "No results found" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No results found"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No results found" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Ergebnisse" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun résultat" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Nessun risultato" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nenhum resultado" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未找到结果" } }
       }
     },
     "No note selected" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No note selected"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No note selected" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Notiz ausgewählt" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune note sélectionnée" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Nessuna nota selezionata" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nenhuma nota selecionada" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未选择笔记" } }
       }
     },
     "Welcome to nvEnvy" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Welcome to nvEnvy"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Welcome to nvEnvy" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Willkommen bei nvEnvy" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Bienvenue dans nvEnvy" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Benvenuto in nvEnvy" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Bem-vindo ao nvEnvy" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "欢迎使用 nvEnvy" } }
+      }
+    },
+    "A fast, keyboard-driven note-taking app." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A fast, keyboard-driven note-taking app." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Eine schnelle, tastaturgesteuerte Notiz-App." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Une app de prise de notes rapide, pilotée au clavier." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Un'app per appunti veloce e da tastiera." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Um app de notas rápido, focado no teclado." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "快速的键盘驱动笔记应用。" } }
       }
     },
     "Choose a folder to store your notes." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose a folder to store your notes."
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a folder to store your notes." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wählen Sie einen Ordner für Ihre Notizen." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisissez un dossier pour vos notes." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Scegli una cartella per le tue note." } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Escolha uma pasta para suas notas." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择一个文件夹来存储笔记。" } }
       }
     },
     "Choose Notes Folder..." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose Notes Folder..."
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose Notes Folder..." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Notiz-Ordner wählen …" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Choisir le dossier de notes…" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Scegli cartella note…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Escolher pasta de notas…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择笔记文件夹…" } }
       }
     },
     "General" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "General"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "General" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Allgemein" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Général" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Generali" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Geral" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "通用" } }
       }
     },
     "Editing" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Editing"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Editing" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bearbeitung" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Édition" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Modifica" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Edição" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "编辑" } }
       }
     },
     "Fonts & Colors" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fonts & Colors"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Fonts & Colors" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Schriften & Farben" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Polices et couleurs" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Font e colori" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Fontes e cores" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "字体与颜色" } }
       }
     },
     "Database" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Database"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Database" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Datenbank" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Base de données" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Database" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Banco de dados" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "数据库" } }
       }
     },
     "Delete Note?" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete Note?"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete Note?" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Notiz löschen?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer la note ?" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Eliminare la nota?" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Excluir nota?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除笔记？" } }
       }
     },
     "No External Editor" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No External Editor"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No External Editor" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kein externer Editor" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucun éditeur externe" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Nessun editor esterno" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Sem editor externo" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无外部编辑器" } }
       }
     },
     "Import Files..." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import Files..."
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import Files..." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dateien importieren …" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer des fichiers…" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Importa file…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Importar arquivos…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入文件…" } }
       }
     },
     "Import Folder..." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import Folder..."
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import Folder..." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ordner importieren …" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer un dossier…" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Importa cartella…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Importar pasta…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入文件夹…" } }
       }
     },
     "Export..." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Export..."
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export..." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Exportieren …" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Exporter…" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Esporta…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Exportar…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导出…" } }
       }
     },
     "Bold" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bold"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bold" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Fett" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gras" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Grassetto" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Negrito" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粗体" } }
       }
     },
     "Italic" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Italic"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Italic" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kursiv" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Italique" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Corsivo" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Itálico" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "斜体" } }
       }
     },
     "Strikethrough" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Strikethrough"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Strikethrough" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Durchgestrichen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Barré" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Barrato" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Tachado" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除线" } }
       }
     },
     "Notes" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Notes"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notes" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Notizen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Notes" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Note" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Notas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "笔记" } }
       }
     },
     "Bookmarks" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bookmarks"
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bookmarks" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lesezeichen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Signets" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Segnalibri" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Favoritos" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "书签" } }
+      }
+    },
+    "Delete" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Löschen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Elimina" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Excluir" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除" } }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abbrechen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Annulla" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消" } }
+      }
+    },
+    "Print..." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Print..." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Drucken …" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Imprimer…" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Stampa…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Imprimir…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打印…" } }
+      }
+    },
+    "Save Bookmark" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save Bookmark" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lesezeichen speichern" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrer le signet" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Salva segnalibro" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Salvar favorito" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存书签" } }
+      }
+    },
+    "Next Note" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Next Note" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nächste Notiz" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Note suivante" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Nota successiva" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Próxima nota" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下一条笔记" } }
+      }
+    },
+    "Previous Note" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Previous Note" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Vorherige Notiz" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Note précédente" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Nota precedente" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nota anterior" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "上一条笔记" } }
+      }
+    },
+    "Deselect" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Deselect" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Auswahl aufheben" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Désélectionner" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Deseleziona" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Desselecionar" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "取消选择" } }
+      }
+    },
+    "Delete Note" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete Note" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Notiz löschen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Supprimer la note" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Elimina nota" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Excluir nota" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除笔记" } }
+      }
+    },
+    "Tag Note..." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tag Note..." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Notiz taggen …" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Étiqueter la note…" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Tagga nota…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Etiquetar nota…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "标记笔记…" } }
+      }
+    },
+    "Reveal in Finder" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reveal in Finder" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Im Finder zeigen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher dans le Finder" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Mostra nel Finder" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar no Finder" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在访达中显示" } }
+      }
+    },
+    "Open in External Editor" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open in External Editor" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "In externem Editor öffnen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvrir dans un éditeur externe" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Apri in editor esterno" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Abrir em editor externo" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在外部编辑器中打开" } }
+      }
+    },
+    "Resolve Conflicts..." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resolve Conflicts..." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Konflikte lösen …" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Résoudre les conflits…" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Risolvi conflitti…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Resolver conflitos…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "解决冲突…" } }
+      }
+    },
+    "Preview in Marked" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preview in Marked" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Vorschau in Marked" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aperçu dans Marked" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Anteprima in Marked" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Visualizar no Marked" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在 Marked 中预览" } }
+      }
+    },
+    "Paste as Markdown Link" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Paste as Markdown Link" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Als Markdown-Link einfügen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Coller comme lien Markdown" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Incolla come link Markdown" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Colar como link Markdown" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粘贴为 Markdown 链接" } }
+      }
+    },
+    "Copy Note Link" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy Note Link" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Notiz-Link kopieren" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Copier le lien de la note" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Copia link nota" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Copiar link da nota" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制笔记链接" } }
+      }
+    },
+    "Increase Indent" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Increase Indent" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Einzug vergrößern" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Augmenter le retrait" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Aumenta rientro" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Aumentar recuo" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "增加缩进" } }
+      }
+    },
+    "Decrease Indent" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Decrease Indent" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Einzug verkleinern" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Réduire le retrait" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Riduci rientro" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Diminuir recuo" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "减少缩进" } }
+      }
+    },
+    "Plain Text Style" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plain Text Style" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur Text" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Style texte brut" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Stile testo semplice" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Estilo texto simples" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "纯文本样式" } }
+      }
+    },
+    "Toggle Word Count" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Toggle Word Count" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wortzähler ein-/ausblenden" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher/masquer le nombre de mots" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Conteggio parole" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Contagem de palavras" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示/隐藏字数统计" } }
+      }
+    },
+    "Toggle Layout" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Toggle Layout" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Layout wechseln" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Changer la disposition" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Cambia layout" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Alternar layout" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "切换布局" } }
+      }
+    },
+    "Toggle Preview Source" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Toggle Preview Source" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Quelltext der Vorschau" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher la source" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Mostra sorgente anteprima" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Alternar código-fonte" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "切换预览源码" } }
+      }
+    },
+    "Save Preview as HTML..." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save Preview as HTML..." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Vorschau als HTML sichern …" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Enregistrer l'aperçu en HTML…" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Salva anteprima come HTML…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Salvar visualização como HTML…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "将预览保存为 HTML…" } }
+      }
+    },
+    "Check for Updates..." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Check for Updates..." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nach Updates suchen …" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rechercher des mises à jour…" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Cerca aggiornamenti…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Verificar atualizações…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "检查更新…" } }
+      }
+    },
+    "Quick Tips" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quick Tips" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Schnelltipps" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Astuces rapides" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Suggerimenti rapidi" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Dicas rápidas" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "快捷提示" } }
+      }
+    },
+    "Show Bookmarks" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show Bookmarks" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lesezeichen anzeigen" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Afficher les signets" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Mostra segnalibri" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Mostrar favoritos" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示书签" } }
       }
     }
   },
