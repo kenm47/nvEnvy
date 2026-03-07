@@ -165,6 +165,20 @@ struct FontsColorsPreferencesView: View {
                 .pickerStyle(.segmented)
             }
 
+            Section("Note List") {
+                HStack {
+                    Text("Table font size:")
+                    Slider(value: $appState.tableFontSize, in: 9...20, step: 1) {
+                        Text("Size")
+                    }
+                    Text("\(Int(appState.tableFontSize))pt")
+                        .frame(width: 40)
+                        .foregroundStyle(.secondary)
+                }
+                Toggle("Show grid lines", isOn: $appState.showGridLines)
+                Toggle("Alternating row colors", isOn: $appState.alternatingRowColors)
+            }
+
             Section("Layout") {
                 HStack {
                     Text("Max body width:")

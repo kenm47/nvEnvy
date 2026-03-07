@@ -5,38 +5,32 @@ import NvEnvyCore
 struct NoteListView: View {
     @Environment(AppState.self) private var appState
     @Binding var selectedNoteID: Note.ID?
-    @State private var sortOrder: SortOrder = .modifiedDate
-
-    enum SortOrder: String, CaseIterable {
-        case title = "Title"
-        case modifiedDate = "Date Modified"
-        case createdDate = "Date Created"
-    }
 
     var body: some View {
+        @Bindable var appState = appState
         VStack(spacing: 0) {
             List(selection: $selectedNoteID) {
                 ForEach(sortedNotes) { note in
                     if appState.noteListDisplayMode == .preview {
-                        NotePreviewRow(note: note, onTagTap: { tag in
-                            appState.tagFilter = tag
-                        })
-                        .tag(note.id)
+                        NotePreviewRow(note: note, appState: appState)
+                            .tag(note.id)
                     } else {
-                        NoteRow(note: note, onTagTap: { tag in
-                            appState.tagFilter = tag
-                        })
-                        .tag(note.id)
+                        NoteRow(note: note, appState: appState)
+                            .tag(note.id)
                     }
                 }
             }
             .listStyle(.inset)
+            .alternatingRowBackgrounds(appState.alternatingRowColors ? .enabled : .disabled)
             .onKeyPress(.return) {
                 return .ignored
             }
             .onDrop(of: [.plainText, .rtf, .html, .fileURL], isTargeted: nil) { providers in
                 handleDrop(providers)
                 return true
+            }
+            .contextMenu {
+                columnVisibilityMenu
             }
 
             Divider()
@@ -61,19 +55,93 @@ struct NoteListView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Picker("Sort", selection: $sortOrder) {
-                    ForEach(SortOrder.allCases, id: \.self) { order in
-                        Text(order.rawValue).tag(order)
-                    }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .controlSize(.small)
+
+                sortMenu
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
         }
     }
+
+    // MARK: - Sort Menu
+
+    private var sortMenu: some View {
+        Menu {
+            ForEach(AppState.SortField.allCases, id: \.self) { field in
+                Button {
+                    if appState.sortField == field {
+                        appState.sortAscending.toggle()
+                    } else {
+                        appState.sortField = field
+                        appState.sortAscending = false
+                    }
+                } label: {
+                    HStack {
+                        Text(field.displayName)
+                        if appState.sortField == field {
+                            Image(systemName: appState.sortAscending ? "chevron.up" : "chevron.down")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 2) {
+                Text(appState.sortField.displayName)
+                Image(systemName: appState.sortAscending ? "chevron.up" : "chevron.down")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+    }
+
+    // MARK: - Column Visibility Context Menu
+
+    private var columnVisibilityMenu: some View {
+        Group {
+            Toggle("Tags", isOn: Binding(
+                get: { appState.showTagsColumn },
+                set: { appState.showTagsColumn = $0 }
+            ))
+            Toggle("Date Modified", isOn: Binding(
+                get: { appState.showModifiedColumn },
+                set: { appState.showModifiedColumn = $0 }
+            ))
+            Toggle("Date Created", isOn: Binding(
+                get: { appState.showCreatedColumn },
+                set: { appState.showCreatedColumn = $0 }
+            ))
+        }
+    }
+
+    // MARK: - Sorting
+
+    private var sortedNotes: [Note] {
+        let notes = appState.filteredNotes
+        let ascending = appState.sortAscending
+
+        switch appState.sortField {
+        case .title:
+            return notes.sorted {
+                let cmp = $0.title.localizedCaseInsensitiveCompare($1.title)
+                return ascending ? cmp == .orderedAscending : cmp == .orderedDescending
+            }
+        case .modifiedDate:
+            return notes.sorted { ascending ? $0.modifiedDate < $1.modifiedDate : $0.modifiedDate > $1.modifiedDate }
+        case .createdDate:
+            return notes.sorted { ascending ? $0.createdDate < $1.createdDate : $0.createdDate > $1.createdDate }
+        case .tags:
+            return notes.sorted {
+                let t0 = $0.tags.first ?? ""
+                let t1 = $1.tags.first ?? ""
+                let cmp = t0.localizedCaseInsensitiveCompare(t1)
+                return ascending ? cmp == .orderedAscending : cmp == .orderedDescending
+            }
+        }
+    }
+
+    // MARK: - Drop
 
     private func handleDrop(_ providers: [NSItemProvider]) {
         for provider in providers {
@@ -91,7 +159,6 @@ struct NoteListView: View {
                     }
                 }
             } else {
-                // Text/RTF/HTML pasteboard data
                 Task { @MainActor in
                     let pasteboard = NSPasteboard.general
                     appState.importPasteboardItems(pasteboard.pasteboardItems ?? [])
@@ -99,41 +166,40 @@ struct NoteListView: View {
             }
         }
     }
-
-    private var sortedNotes: [Note] {
-        switch sortOrder {
-        case .title:
-            return appState.filteredNotes.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-        case .modifiedDate:
-            return appState.filteredNotes.sorted { $0.modifiedDate > $1.modifiedDate }
-        case .createdDate:
-            return appState.filteredNotes.sorted { $0.createdDate > $1.createdDate }
-        }
-    }
 }
+
+// MARK: - Row Views
 
 struct NoteRow: View {
     let note: Note
-    var onTagTap: (String) -> Void
+    let appState: AppState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(note.title)
-                .font(.body)
+                .font(.system(size: appState.tableFontSize))
                 .lineLimit(1)
 
-            if !note.tags.isEmpty {
+            if appState.showTagsColumn && !note.tags.isEmpty {
                 HStack(spacing: 4) {
                     ForEach(note.tags, id: \.self) { tag in
                         TagPill(tag: tag)
-                            .onTapGesture { onTagTap(tag) }
+                            .onTapGesture { appState.tagFilter = tag }
                     }
                 }
             }
 
-            Text(note.modifiedDate, style: .relative)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if appState.showModifiedColumn {
+                Text(note.modifiedDate, style: .relative)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if appState.showCreatedColumn {
+                Text("Created: " + note.createdDate.formatted(date: .abbreviated, time: .omitted))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
@@ -143,7 +209,7 @@ struct NoteRow: View {
 
 struct NotePreviewRow: View {
     let note: Note
-    var onTagTap: (String) -> Void
+    let appState: AppState
 
     private var firstLine: String {
         let body = note.body.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -153,7 +219,7 @@ struct NotePreviewRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(note.title)
-                .font(.body.bold())
+                .font(.system(size: appState.tableFontSize).bold())
                 .lineLimit(1)
 
             if !firstLine.isEmpty {
@@ -163,11 +229,11 @@ struct NotePreviewRow: View {
                     .lineLimit(1)
             }
 
-            if !note.tags.isEmpty {
+            if appState.showTagsColumn && !note.tags.isEmpty {
                 HStack(spacing: 4) {
                     ForEach(note.tags, id: \.self) { tag in
                         TagPill(tag: tag)
-                            .onTapGesture { onTagTap(tag) }
+                            .onTapGesture { appState.tagFilter = tag }
                     }
                 }
             }

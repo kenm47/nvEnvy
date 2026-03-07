@@ -30,6 +30,14 @@ private let kLayoutOrientationKey = "layoutOrientation"
 private let kCloseActionKey = "closeAction"
 private let kMirrorFinderTagsKey = "mirrorFinderTags"
 private let kShowStatusBarItemKey = "showStatusBarItem"
+private let kSortFieldKey = "sortField"
+private let kSortAscendingKey = "sortAscending"
+private let kTableFontSizeKey = "tableFontSize"
+private let kShowGridLinesKey = "showGridLines"
+private let kAlternatingRowColorsKey = "alternatingRowColors"
+private let kShowTagsColumnKey = "showTagsColumn"
+private let kShowModifiedColumnKey = "showModifiedColumn"
+private let kShowCreatedColumnKey = "showCreatedColumn"
 
 @MainActor
 @Observable
@@ -131,6 +139,48 @@ public final class AppState {
     }
 
     var statusBarController: StatusBarController?
+
+    // Note list preferences
+    public var sortField: SortField {
+        didSet { UserDefaults.standard.set(sortField.rawValue, forKey: kSortFieldKey) }
+    }
+    public var sortAscending: Bool {
+        didSet { UserDefaults.standard.set(sortAscending, forKey: kSortAscendingKey) }
+    }
+    public var tableFontSize: CGFloat {
+        didSet { UserDefaults.standard.set(Double(tableFontSize), forKey: kTableFontSizeKey) }
+    }
+    public var showGridLines: Bool {
+        didSet { UserDefaults.standard.set(showGridLines, forKey: kShowGridLinesKey) }
+    }
+    public var alternatingRowColors: Bool {
+        didSet { UserDefaults.standard.set(alternatingRowColors, forKey: kAlternatingRowColorsKey) }
+    }
+    public var showTagsColumn: Bool {
+        didSet { UserDefaults.standard.set(showTagsColumn, forKey: kShowTagsColumnKey) }
+    }
+    public var showModifiedColumn: Bool {
+        didSet { UserDefaults.standard.set(showModifiedColumn, forKey: kShowModifiedColumnKey) }
+    }
+    public var showCreatedColumn: Bool {
+        didSet { UserDefaults.standard.set(showCreatedColumn, forKey: kShowCreatedColumnKey) }
+    }
+
+    public enum SortField: Int, CaseIterable {
+        case title = 0
+        case modifiedDate = 1
+        case createdDate = 2
+        case tags = 3
+
+        public var displayName: String {
+            switch self {
+            case .title: return "Title"
+            case .modifiedDate: return "Date Modified"
+            case .createdDate: return "Date Created"
+            case .tags: return "Tags"
+            }
+        }
+    }
 
     public enum NoteListDisplayMode: Int, CaseIterable {
         case standard = 0
@@ -243,6 +293,14 @@ public final class AppState {
         self.closeAction = CloseAction(rawValue: ud.integer(forKey: kCloseActionKey)) ?? .quit
         self.mirrorFinderTags = ud.object(forKey: kMirrorFinderTagsKey) as? Bool ?? true
         self.showStatusBarItem = ud.bool(forKey: kShowStatusBarItemKey)
+        self.sortField = SortField(rawValue: ud.integer(forKey: kSortFieldKey)) ?? .modifiedDate
+        self.sortAscending = ud.object(forKey: kSortAscendingKey) as? Bool ?? false
+        self.tableFontSize = CGFloat(ud.object(forKey: kTableFontSizeKey) as? Double ?? 13)
+        self.showGridLines = ud.bool(forKey: kShowGridLinesKey)
+        self.alternatingRowColors = ud.object(forKey: kAlternatingRowColorsKey) as? Bool ?? true
+        self.showTagsColumn = ud.object(forKey: kShowTagsColumnKey) as? Bool ?? true
+        self.showModifiedColumn = ud.object(forKey: kShowModifiedColumnKey) as? Bool ?? true
+        self.showCreatedColumn = ud.bool(forKey: kShowCreatedColumnKey)
 
         restoreNotesFolder()
 
