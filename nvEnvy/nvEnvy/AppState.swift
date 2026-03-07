@@ -42,6 +42,8 @@ private let kDoneStrikethroughKey = "doneStrikethrough"
 private let kAutoSuggestWikilinksKey = "autoSuggestWikilinks"
 private let kAppearanceOverrideKey = "appearanceOverride"
 private let kNoteListCollapsedKey = "noteListCollapsed"
+private let kUseReadabilityKey = "useReadabilityForURLImport"
+private let kConvertHTMLToMarkdownKey = "convertHTMLToMarkdown"
 
 @MainActor
 @Observable
@@ -178,6 +180,14 @@ public final class AppState {
     // Wikilink autocomplete
     public var autoSuggestWikilinks: Bool {
         didSet { UserDefaults.standard.set(autoSuggestWikilinks, forKey: kAutoSuggestWikilinksKey) }
+    }
+
+    // URL import preferences
+    public var useReadabilityForURLImport: Bool {
+        didSet { UserDefaults.standard.set(useReadabilityForURLImport, forKey: kUseReadabilityKey) }
+    }
+    public var convertHTMLToMarkdown: Bool {
+        didSet { UserDefaults.standard.set(convertHTMLToMarkdown, forKey: kConvertHTMLToMarkdownKey) }
     }
 
     // Note list collapsed
@@ -366,6 +376,8 @@ public final class AppState {
         self.showCreatedColumn = ud.bool(forKey: kShowCreatedColumnKey)
         self.doneStrikethroughEnabled = ud.object(forKey: kDoneStrikethroughKey) as? Bool ?? true
         self.autoSuggestWikilinks = ud.object(forKey: kAutoSuggestWikilinksKey) as? Bool ?? true
+        self.useReadabilityForURLImport = ud.object(forKey: kUseReadabilityKey) as? Bool ?? true
+        self.convertHTMLToMarkdown = ud.object(forKey: kConvertHTMLToMarkdownKey) as? Bool ?? true
         self.noteListCollapsed = ud.bool(forKey: kNoteListCollapsedKey)
         self.appearanceOverride = AppearanceOverride(rawValue: ud.integer(forKey: kAppearanceOverrideKey)) ?? .system
 

@@ -235,6 +235,11 @@ struct DatabasePreferencesView: View {
                 Toggle("Mirror tags to Finder", isOn: $appState.mirrorFinderTags)
             }
 
+            Section("URL Import") {
+                Toggle("Extract article content (Readability)", isOn: $appState.useReadabilityForURLImport)
+                Toggle("Convert HTML to Markdown", isOn: $appState.convertHTMLToMarkdown)
+            }
+
             Section("Behavior") {
                 Toggle("Confirm note deletion", isOn: $appState.confirmDeletion)
             }

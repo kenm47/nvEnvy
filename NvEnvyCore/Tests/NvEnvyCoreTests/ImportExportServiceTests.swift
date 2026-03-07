@@ -151,4 +151,70 @@ final class ImportExportServiceTests: XCTestCase {
         XCTAssertEqual(imported.title, "HTML Paste")
         XCTAssertEqual(imported.body, "Hello")
     }
+
+    // MARK: - HTML to Markdown
+
+    func testHTMLToMarkdownHeadings() {
+        let html = "<h1>Title</h1><h2>Subtitle</h2><h3>Section</h3>"
+        let md = ImportExportService.htmlToMarkdown(html)
+        XCTAssertTrue(md.contains("# Title"))
+        XCTAssertTrue(md.contains("## Subtitle"))
+        XCTAssertTrue(md.contains("### Section"))
+    }
+
+    func testHTMLToMarkdownFormatting() {
+        let html = "<strong>bold</strong> and <em>italic</em> and <code>code</code>"
+        let md = ImportExportService.htmlToMarkdown(html)
+        XCTAssertTrue(md.contains("**bold**"))
+        XCTAssertTrue(md.contains("_italic_"))
+        XCTAssertTrue(md.contains("`code`"))
+    }
+
+    func testHTMLToMarkdownLinks() {
+        let html = "<a href=\"https://example.com\">Example</a>"
+        let md = ImportExportService.htmlToMarkdown(html)
+        XCTAssertTrue(md.contains("[Example](https://example.com)"))
+    }
+
+    func testHTMLToMarkdownListItems() {
+        let html = "<ul><li>First</li><li>Second</li></ul>"
+        let md = ImportExportService.htmlToMarkdown(html)
+        XCTAssertTrue(md.contains("- First"))
+        XCTAssertTrue(md.contains("- Second"))
+    }
+
+    func testHTMLToMarkdownStripsScripts() {
+        let html = "<p>Content</p><script>alert('x')</script>"
+        let md = ImportExportService.htmlToMarkdown(html)
+        XCTAssertTrue(md.contains("Content"))
+        XCTAssertFalse(md.contains("alert"))
+    }
+
+    // MARK: - Readability Extraction
+
+    func testExtractArticleContent() {
+        let html = """
+        <html><body>
+        <nav>Navigation</nav>
+        <article>Main article content here</article>
+        <footer>Footer info</footer>
+        </body></html>
+        """
+        let extracted = ImportExportService.extractArticleContent(html)
+        XCTAssertTrue(extracted.contains("Main article content"))
+        XCTAssertFalse(extracted.contains("Navigation"))
+        XCTAssertFalse(extracted.contains("Footer"))
+    }
+
+    func testExtractArticleContentFallsBackToLargestDiv() {
+        let html = """
+        <html><body>
+        <script>var x = 1;</script>
+        <div>Short</div>
+        <div>This is a much longer div with lots of content that should be selected as the main content block</div>
+        </body></html>
+        """
+        let extracted = ImportExportService.extractArticleContent(html)
+        XCTAssertTrue(extracted.contains("much longer div"))
+    }
 }
