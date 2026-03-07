@@ -9,28 +9,50 @@ struct NoteListView: View {
     var body: some View {
         @Bindable var appState = appState
         VStack(spacing: 0) {
-            List(selection: $selectedNoteID) {
-                ForEach(sortedNotes) { note in
-                    if appState.noteListDisplayMode == .preview {
-                        NotePreviewRow(note: note, appState: appState)
-                            .tag(note.id)
+            if sortedNotes.isEmpty {
+                VStack(spacing: 12) {
+                    Spacer()
+                    if !appState.searchQuery.isEmpty {
+                        Text("No results found")
+                            .foregroundStyle(.secondary)
+                        Button("Create \"\(appState.searchQuery)\"") {
+                            appState.createOrSelectNote()
+                        }
+                        .buttonStyle(.bordered)
                     } else {
-                        NoteRow(note: note, appState: appState)
-                            .tag(note.id)
+                        Text("No notes yet")
+                            .foregroundStyle(.secondary)
+                        Text("Type in the search field to create one.")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                List(selection: $selectedNoteID) {
+                    ForEach(sortedNotes) { note in
+                        if appState.noteListDisplayMode == .preview {
+                            NotePreviewRow(note: note, appState: appState)
+                                .tag(note.id)
+                        } else {
+                            NoteRow(note: note, appState: appState)
+                                .tag(note.id)
+                        }
                     }
                 }
-            }
-            .listStyle(.inset)
-            .alternatingRowBackgrounds(appState.alternatingRowColors ? .enabled : .disabled)
-            .onKeyPress(.return) {
-                return .ignored
-            }
-            .onDrop(of: [.plainText, .rtf, .html, .fileURL], isTargeted: nil) { providers in
-                handleDrop(providers)
-                return true
-            }
-            .contextMenu {
-                columnVisibilityMenu
+                .listStyle(.inset)
+                .alternatingRowBackgrounds(appState.alternatingRowColors ? .enabled : .disabled)
+                .onKeyPress(.return) {
+                    return .ignored
+                }
+                .onDrop(of: [.plainText, .rtf, .html, .fileURL], isTargeted: nil) { providers in
+                    handleDrop(providers)
+                    return true
+                }
+                .contextMenu {
+                    columnVisibilityMenu
+                }
             }
 
             Divider()

@@ -4,6 +4,13 @@ import NvEnvyCore
 struct MainView: View {
     @Environment(AppState.self) private var appState
 
+    private var windowTitle: String {
+        if let id = appState.selectedNoteID, let note = appState.note(for: id) {
+            return note.title
+        }
+        return "nvEnvy"
+    }
+
     var body: some View {
         @Bindable var appState = appState
         VStack(spacing: 0) {
@@ -18,7 +25,11 @@ struct MainView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Go back to previous note")
+                    .accessibilityHint("Return to the previous note in navigation history")
                 }
+
+                // Sync status indicator
+                SyncStatusToolbarIndicator(appState: appState)
 
                 SearchField(
                     query: $appState.searchQuery,
@@ -65,6 +76,7 @@ struct MainView: View {
             }
         }
         .frame(minWidth: 600, minHeight: 400)
+        .navigationTitle(windowTitle)
         .background(
             KeyboardShortcutHandlers(appState: appState)
         )
@@ -136,6 +148,32 @@ struct KeyboardShortcutHandlers: View {
         }
         .frame(width: 0, height: 0)
         .opacity(0)
+    }
+}
+
+struct SyncStatusToolbarIndicator: View {
+    let appState: AppState
+
+    private var icon: String {
+        let hasConflicts = appState.allNotes.contains { $0.syncStatus == .conflict }
+        let hasSyncing = appState.allNotes.contains { $0.syncStatus == .uploading || $0.syncStatus == .downloading }
+        if hasConflicts { return "exclamationmark.icloud" }
+        if hasSyncing { return "arrow.triangle.2.circlepath" }
+        return "checkmark.icloud"
+    }
+
+    private var color: Color {
+        let hasConflicts = appState.allNotes.contains { $0.syncStatus == .conflict }
+        if hasConflicts { return .orange }
+        return .secondary
+    }
+
+    var body: some View {
+        Image(systemName: icon)
+            .font(.caption)
+            .foregroundStyle(color)
+            .help(appState.syncHealthSummary)
+            .accessibilityLabel("Sync status: \(appState.syncHealthSummary)")
     }
 }
 

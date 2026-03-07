@@ -31,6 +31,7 @@ struct SearchField: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(String(localized: "Clear search"))
+                .accessibilityHint(String(localized: "Double-tap to clear the search field"))
             }
         }
         .padding(6)
