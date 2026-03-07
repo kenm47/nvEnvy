@@ -891,6 +891,30 @@ public final class AppState {
         }
     }
 
+    // MARK: - Batch Tag Operations
+
+    public func batchAddTag(_ tag: String, to noteIDs: Set<UUID>) {
+        for noteID in noteIDs {
+            guard let note = note(for: noteID) else { continue }
+            if !note.tags.contains(tag) {
+                var tags = note.tags
+                tags.append(tag)
+                updateNoteTags(noteID: noteID, tags: tags)
+            }
+        }
+    }
+
+    public func batchRemoveTag(_ tag: String, from noteIDs: Set<UUID>) {
+        for noteID in noteIDs {
+            guard let note = note(for: noteID) else { continue }
+            if note.tags.contains(tag) {
+                var tags = note.tags
+                tags.removeAll { $0 == tag }
+                updateNoteTags(noteID: noteID, tags: tags)
+            }
+        }
+    }
+
     // MARK: - Appearance
 
     private func applyAppearanceOverride(_ override: AppearanceOverride) {
