@@ -4,6 +4,7 @@ struct SearchField: View {
     @Binding var query: String
     var onReturn: () -> Void
     var onEscape: () -> Void
+    var onDownArrow: () -> Void = {}
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -17,6 +18,18 @@ struct SearchField: View {
                 .onSubmit { onReturn() }
                 .onKeyPress(.escape) {
                     onEscape()
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    onDownArrow()
+                    isFocused = false
+                    // Find the NSTableView (backing SwiftUI List) and make it first responder
+                    DispatchQueue.main.async {
+                        if let window = NSApp.keyWindow,
+                           let tableView = Self.findTableView(in: window.contentView) {
+                            window.makeFirstResponder(tableView)
+                        }
+                    }
                     return .handled
                 }
                 .accessibilityLabel(String(localized: "Search or Create"))
@@ -46,5 +59,14 @@ struct SearchField: View {
                 .frame(width: 0, height: 0)
                 .opacity(0)
         )
+    }
+
+    private static func findTableView(in view: NSView?) -> NSTableView? {
+        guard let view else { return nil }
+        if let tableView = view as? NSTableView { return tableView }
+        for subview in view.subviews {
+            if let found = findTableView(in: subview) { return found }
+        }
+        return nil
     }
 }

@@ -47,6 +47,9 @@ struct MainView: View {
                         } else {
                             appState.clearSearch()
                         }
+                    },
+                    onDownArrow: {
+                        appState.selectNextNote()
                     }
                 )
             }
