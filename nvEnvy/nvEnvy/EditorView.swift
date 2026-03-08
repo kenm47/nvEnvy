@@ -107,17 +107,27 @@ struct NoteTextEditor: NSViewRepresentable {
         return scrollView
     }
 
+    // MARK: - Scroll jitter prevention
+    // Each keystroke triggers: textDidChange → updateNoteBody → @Observable change → updateNSView.
+    // To prevent scroll jitter, this method avoids any work that causes full-document layout
+    // invalidation during typing. Property sets are guarded with equality checks, wikilink/done
+    // highlighting is debounced in textDidChange, and search highlights only run when the query
+    // changes. If jitter recurs, check whether new code here touches NSTextStorage attributes
+    // on the full document range — that's the trigger.
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         let textView = scrollView.documentView as! NSTextView
         let coordinator = context.coordinator
+        let isNoteSwitch = coordinator.currentNoteID != note.id
 
-        if coordinator.currentNoteID != note.id {
+        if isNoteSwitch {
             coordinator.currentNoteID = note.id
             coordinator.isUpdating = true
             textView.undoManager?.removeAllActions()
             textView.string = note.body
             coordinator.isUpdating = false
             coordinator.applyTextAttributes(textView)
+            coordinator.lastHighlightedSearchQuery = appState.searchQuery
+            return
         }
 
         if textView.font != appState.editorFont {
@@ -140,9 +150,13 @@ struct NoteTextEditor: NSViewRepresentable {
             textView.baseWritingDirection = desiredDirection
         }
 
-        if !coordinator.isLocalEdit {
+        // Only re-run search highlights when the query actually changed
+        let searchQueryChanged = coordinator.lastHighlightedSearchQuery != appState.searchQuery
+        if searchQueryChanged {
+            coordinator.lastHighlightedSearchQuery = appState.searchQuery
+            textView.textStorage?.beginEditing()
             coordinator.highlightSearchTerms(in: textView)
-            coordinator.highlightWikilinks(in: textView)
+            textView.textStorage?.endEditing()
         }
     }
 
@@ -153,7 +167,8 @@ struct NoteTextEditor: NSViewRepresentable {
         let appState: AppState
         var currentNoteID: Note.ID?
         var isUpdating = false
-        var isLocalEdit = false
+        var lastHighlightedSearchQuery = ""
+        var highlightWorkItem: DispatchWorkItem?
         weak var textView: NSTextView?
 
         private static let autoPairs: [String: String] = [
@@ -168,14 +183,27 @@ struct NoteTextEditor: NSViewRepresentable {
             guard !isUpdating,
                   let textView = notification.object as? NSTextView,
                   let noteID = currentNoteID else { return }
-            isLocalEdit = true
             appState.updateNoteBody(noteID: noteID, body: textView.string)
-            highlightWikilinks(in: textView)
-            applyDoneStrikethrough(in: textView)
-            checkWikilinkAutocomplete(in: textView)
-            DispatchQueue.main.async { [weak self] in
-                self?.isLocalEdit = false
+
+            // Debounce wikilink/done highlighting to avoid full-range attribute
+            // manipulation on every keystroke, which causes scroll jitter.
+            // highlightWikilinks does removeAttribute(.link, fullRange) which invalidates
+            // layout for the entire document — at the bottom of a long note this causes
+            // visible scroll bouncing, especially on space (word-boundary processing).
+            // The ensureLayout/setNeedsDisplay after highlighting prevents white-flash
+            // artifacts from incomplete layout after the deferred attribute changes.
+            highlightWorkItem?.cancel()
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let self, let textView = self.textView else { return }
+                self.highlightWikilinks(in: textView)
+                self.applyDoneStrikethrough(in: textView)
+                textView.layoutManager?.ensureLayout(for: textView.textContainer!)
+                textView.setNeedsDisplay(textView.visibleRect)
             }
+            highlightWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
+
+            checkWikilinkAutocomplete(in: textView)
         }
 
         // MARK: - Key handling for auto-behaviors
@@ -323,9 +351,11 @@ struct NoteTextEditor: NSViewRepresentable {
         // MARK: - Text Attributes
 
         func applyTextAttributes(_ textView: NSTextView) {
+            textView.textStorage?.beginEditing()
             highlightWikilinks(in: textView)
             highlightSearchTerms(in: textView)
             applyDoneStrikethrough(in: textView)
+            textView.textStorage?.endEditing()
         }
 
         func highlightWikilinks(in textView: NSTextView) {
