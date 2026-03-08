@@ -123,14 +123,27 @@ struct NoteTextEditor: NSViewRepresentable {
         if textView.font != appState.editorFont {
             textView.font = appState.editorFont
         }
-        textView.textColor = appState.editorFGColor
-        textView.backgroundColor = appState.editorBGColor
-        textView.isAutomaticLinkDetectionEnabled = appState.urlDetectionEnabled
-        textView.isContinuousSpellCheckingEnabled = appState.checkSpellingEnabled
-        textView.baseWritingDirection = appState.rightToLeftText ? .rightToLeft : .leftToRight
+        if textView.textColor != appState.editorFGColor {
+            textView.textColor = appState.editorFGColor
+        }
+        if textView.backgroundColor != appState.editorBGColor {
+            textView.backgroundColor = appState.editorBGColor
+        }
+        if textView.isAutomaticLinkDetectionEnabled != appState.urlDetectionEnabled {
+            textView.isAutomaticLinkDetectionEnabled = appState.urlDetectionEnabled
+        }
+        if textView.isContinuousSpellCheckingEnabled != appState.checkSpellingEnabled {
+            textView.isContinuousSpellCheckingEnabled = appState.checkSpellingEnabled
+        }
+        let desiredDirection: NSWritingDirection = appState.rightToLeftText ? .rightToLeft : .leftToRight
+        if textView.baseWritingDirection != desiredDirection {
+            textView.baseWritingDirection = desiredDirection
+        }
 
-        coordinator.highlightSearchTerms(in: textView)
-        coordinator.highlightWikilinks(in: textView)
+        if !coordinator.isLocalEdit {
+            coordinator.highlightSearchTerms(in: textView)
+            coordinator.highlightWikilinks(in: textView)
+        }
     }
 
     // MARK: - Coordinator
@@ -140,6 +153,7 @@ struct NoteTextEditor: NSViewRepresentable {
         let appState: AppState
         var currentNoteID: Note.ID?
         var isUpdating = false
+        var isLocalEdit = false
         weak var textView: NSTextView?
 
         private static let autoPairs: [String: String] = [
@@ -154,10 +168,14 @@ struct NoteTextEditor: NSViewRepresentable {
             guard !isUpdating,
                   let textView = notification.object as? NSTextView,
                   let noteID = currentNoteID else { return }
+            isLocalEdit = true
             appState.updateNoteBody(noteID: noteID, body: textView.string)
             highlightWikilinks(in: textView)
             applyDoneStrikethrough(in: textView)
             checkWikilinkAutocomplete(in: textView)
+            DispatchQueue.main.async { [weak self] in
+                self?.isLocalEdit = false
+            }
         }
 
         // MARK: - Key handling for auto-behaviors
