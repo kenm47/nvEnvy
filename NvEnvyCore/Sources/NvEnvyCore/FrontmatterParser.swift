@@ -134,20 +134,29 @@ public enum FrontmatterParser {
         return []
     }
 
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+    private static let yamlDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+    private static let yamlDateTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f
+    }()
+
     private static func parseDate(_ node: Node) -> Date? {
         guard let str = node.string else { return nil }
-        // Try ISO 8601 first
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withInternetDateTime]
-        if let date = iso.date(from: str) { return date }
-        // Try YAML date format (yyyy-MM-dd)
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateFormat = "yyyy-MM-dd"
-        if let date = df.date(from: str) { return date }
-        // Try yyyy-MM-dd HH:mm:ss
-        df.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        if let date = df.date(from: str) { return date }
+        if let date = isoFormatter.date(from: str) { return date }
+        if let date = yamlDateFormatter.date(from: str) { return date }
+        if let date = yamlDateTimeFormatter.date(from: str) { return date }
         return nil
     }
 

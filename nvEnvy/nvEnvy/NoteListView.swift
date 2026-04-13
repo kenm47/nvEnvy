@@ -43,9 +43,6 @@ struct NoteListView: View {
                 }
                 .listStyle(.inset)
                 .alternatingRowBackgrounds(appState.alternatingRowColors ? .enabled : .disabled)
-                .onKeyPress(.return) {
-                    return .ignored
-                }
                 .onDrop(of: [.plainText, .rtf, .html, .fileURL], isTargeted: nil) { providers in
                     handleDrop(providers)
                     return true
@@ -137,31 +134,9 @@ struct NoteListView: View {
         }
     }
 
-    // MARK: - Sorting
+    // MARK: - Sorting (cached in AppState.sortedNotes)
 
-    private var sortedNotes: [Note] {
-        let notes = appState.filteredNotes
-        let ascending = appState.sortAscending
-
-        switch appState.sortField {
-        case .title:
-            return notes.sorted {
-                let cmp = $0.title.localizedCaseInsensitiveCompare($1.title)
-                return ascending ? cmp == .orderedAscending : cmp == .orderedDescending
-            }
-        case .modifiedDate:
-            return notes.sorted { ascending ? $0.modifiedDate < $1.modifiedDate : $0.modifiedDate > $1.modifiedDate }
-        case .createdDate:
-            return notes.sorted { ascending ? $0.createdDate < $1.createdDate : $0.createdDate > $1.createdDate }
-        case .tags:
-            return notes.sorted {
-                let t0 = $0.tags.first ?? ""
-                let t1 = $1.tags.first ?? ""
-                let cmp = t0.localizedCaseInsensitiveCompare(t1)
-                return ascending ? cmp == .orderedAscending : cmp == .orderedDescending
-            }
-        }
-    }
+    private var sortedNotes: [Note] { appState.sortedNotes }
 
     // MARK: - Drop
 
@@ -197,39 +172,19 @@ struct NoteRow: View {
     let appState: AppState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
-                Text(note.title)
-                    .font(.system(size: appState.tableFontSize))
-                    .lineLimit(1)
-
-                SyncStatusIcon(status: note.syncStatus)
-            }
-
-            if appState.showTagsColumn && !note.tags.isEmpty {
-                HStack(spacing: 4) {
-                    ForEach(note.tags, id: \.self) { tag in
-                        TagPill(tag: tag)
-                            .onTapGesture { appState.tagFilter = tag }
-                    }
-                }
-            }
-
-            if appState.showModifiedColumn {
-                Text(note.modifiedDate, style: .relative)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if appState.showCreatedColumn {
-                Text("Created: " + note.createdDate.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+        HStack {
+            Text(note.title)
+                .font(.system(size: appState.tableFontSize))
+                .lineLimit(1)
+            SyncStatusIcon(status: note.syncStatus)
+            Spacer()
+            Text(note.modifiedDate.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(note.title), \(note.tags.isEmpty ? "" : "tags: \(note.tags.joined(separator: ", ")), ")modified \(note.modifiedDate.formatted(.relative(presentation: .named)))")
+        .accessibilityLabel("\(note.title), modified \(note.modifiedDate.formatted(date: .abbreviated, time: .shortened))")
     }
 }
 

@@ -39,6 +39,9 @@ struct MainView: View {
                         } else {
                             appState.createOrSelectNote()
                         }
+                        DispatchQueue.main.async {
+                            NotificationCenter.default.post(name: .nvEnvyFocusEditor, object: nil)
+                        }
                     },
                     onEscape: {
                         if appState.isRenaming {
@@ -84,6 +87,7 @@ struct MainView: View {
             KeyboardShortcutHandlers(appState: appState)
         )
         .background(WindowAccessor())
+        .background(BacktabMonitor())
     }
 }
 
@@ -97,6 +101,48 @@ struct WindowAccessor: NSViewRepresentable {
         return view
     }
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+// Monitors Shift+Tab on the note list (NSTableView) to move focus to search
+struct BacktabMonitor: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = BacktabView()
+        return view
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    class BacktabView: NSView {
+        var monitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                guard let fr = self.window?.firstResponder else { return event }
+                let isTableFocused = fr is NSTableView ||
+                    (fr is NSView && (fr as? NSView)?.enclosingScrollView?.documentView is NSTableView)
+                guard isTableFocused else { return event }
+
+                // Shift+Tab from note list → search field
+                if event.keyCode == 48, event.modifierFlags.contains(.shift) {
+                    NotificationCenter.default.post(name: .nvEnvyFocusSearchField, object: nil)
+                    return nil
+                }
+                // Tab or Enter from note list → editor
+                if event.keyCode == 48 || event.keyCode == 36 {
+                    NotificationCenter.default.post(name: .nvEnvyFocusEditor, object: nil)
+                    return nil
+                }
+                return event
+            }
+        }
+
+        override func removeFromSuperview() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+            super.removeFromSuperview()
+        }
+    }
 }
 
 // Invisible view for keyboard shortcuts
@@ -157,24 +203,45 @@ struct KeyboardShortcutHandlers: View {
 struct SyncStatusToolbarIndicator: View {
     let appState: AppState
 
-    private var icon: String {
-        let hasConflicts = appState.allNotes.contains { $0.syncStatus == .conflict }
-        let hasSyncing = appState.allNotes.contains { $0.syncStatus == .uploading || $0.syncStatus == .downloading }
-        if hasConflicts { return "exclamationmark.icloud" }
-        if hasSyncing { return "arrow.triangle.2.circlepath" }
-        return "checkmark.icloud"
+    private enum SyncState {
+        case conflict, syncing, synced
+
+        var icon: String {
+            switch self {
+            case .conflict: "exclamationmark.icloud"
+            case .syncing: "arrow.triangle.2.circlepath"
+            case .synced: "checkmark.icloud"
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .conflict: .orange
+            case .syncing, .synced: .secondary
+            }
+        }
     }
 
-    private var color: Color {
-        let hasConflicts = appState.allNotes.contains { $0.syncStatus == .conflict }
-        if hasConflicts { return .orange }
-        return .secondary
+    private var syncState: SyncState {
+        var hasConflict = false
+        var hasSyncing = false
+        for note in appState.allNotes {
+            switch note.syncStatus {
+            case .conflict: hasConflict = true
+            case .uploading, .downloading: hasSyncing = true
+            default: break
+            }
+            if hasConflict { break }
+        }
+        if hasConflict { return .conflict }
+        if hasSyncing { return .syncing }
+        return .synced
     }
 
     var body: some View {
-        Image(systemName: icon)
+        Image(systemName: syncState.icon)
             .font(.caption)
-            .foregroundStyle(color)
+            .foregroundStyle(syncState.color)
             .help(appState.syncHealthSummary)
             .accessibilityLabel("Sync status: \(appState.syncHealthSummary)")
     }

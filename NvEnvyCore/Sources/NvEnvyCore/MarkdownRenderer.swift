@@ -34,7 +34,7 @@ public enum MarkdownRenderer {
         return htmlVisitor.visit(document)
     }
 
-    private static func escapeHTML(_ string: String) -> String {
+    static func escapeHTML(_ string: String) -> String {
         string
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
@@ -221,10 +221,6 @@ private struct HTMLVisitor: MarkupVisitor {
     }
 
     private func escapeHTML(_ string: String) -> String {
-        string
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
+        MarkdownRenderer.escapeHTML(string)
     }
 }

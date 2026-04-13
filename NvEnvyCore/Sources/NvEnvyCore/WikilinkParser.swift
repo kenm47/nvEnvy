@@ -2,9 +2,9 @@ import Foundation
 
 public enum WikilinkParser {
     public static let pattern = "\\[\\[([^\\]]+)\\]\\]"
+    private static let regex = try! NSRegularExpression(pattern: pattern)
 
     public static func findWikilinks(in text: String) -> [(range: Range<String.Index>, title: String)] {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
         let nsRange = NSRange(text.startIndex..., in: text)
         let matches = regex.matches(in: text, range: nsRange)
 
@@ -16,7 +16,6 @@ public enum WikilinkParser {
     }
 
     public static func findWikilinkNSRanges(in text: String) -> [(range: NSRange, title: String)] {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
         let nsRange = NSRange(text.startIndex..., in: text)
         let matches = regex.matches(in: text, range: nsRange)
 

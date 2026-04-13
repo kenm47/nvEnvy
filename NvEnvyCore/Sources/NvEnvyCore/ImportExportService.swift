@@ -19,6 +19,37 @@ public struct ImportedNote: Sendable {
 }
 
 public actor ImportExportService {
+    // Pre-compiled regexes for HTML processing
+    private static let scriptRegex = try! NSRegularExpression(pattern: "<script[^>]*>[\\s\\S]*?</script>")
+    private static let styleRegex = try! NSRegularExpression(pattern: "<style[^>]*>[\\s\\S]*?</style>")
+    private static let brRegex = try! NSRegularExpression(pattern: "<br[^>]*>")
+    private static let tagRegex = try! NSRegularExpression(pattern: "<[^>]+>")
+    private static let multiNewlineRegex = try! NSRegularExpression(pattern: "\n{3,}")
+    private static let h1Regex = try! NSRegularExpression(pattern: "<h1[^>]*>(.*?)</h1>")
+    private static let h2Regex = try! NSRegularExpression(pattern: "<h2[^>]*>(.*?)</h2>")
+    private static let h3Regex = try! NSRegularExpression(pattern: "<h3[^>]*>(.*?)</h3>")
+    private static let h4Regex = try! NSRegularExpression(pattern: "<h4[^>]*>(.*?)</h4>")
+    private static let h5Regex = try! NSRegularExpression(pattern: "<h5[^>]*>(.*?)</h5>")
+    private static let h6Regex = try! NSRegularExpression(pattern: "<h6[^>]*>(.*?)</h6>")
+    private static let boldRegex = try! NSRegularExpression(pattern: "<(strong|b)>(.*?)</\\1>")
+    private static let italicRegex = try! NSRegularExpression(pattern: "<(em|i)>(.*?)</\\1>")
+    private static let codeRegex = try! NSRegularExpression(pattern: "<code>(.*?)</code>")
+    private static let preCodeRegex = try! NSRegularExpression(pattern: "<pre[^>]*><code[^>]*>(.*?)</code></pre>")
+    private static let preRegex = try! NSRegularExpression(pattern: "<pre[^>]*>(.*?)</pre>")
+    private static let linkRegex = try! NSRegularExpression(pattern: "<a[^>]*href=\"([^\"]*)\"[^>]*>(.*?)</a>")
+    private static let imgAltSrcRegex = try! NSRegularExpression(pattern: "<img[^>]*alt=\"([^\"]*)\"[^>]*src=\"([^\"]*)\"[^>]*/?>")
+    private static let imgSrcAltRegex = try! NSRegularExpression(pattern: "<img[^>]*src=\"([^\"]*)\"[^>]*alt=\"([^\"]*)\"[^>]*/?>")
+    private static let imgSrcRegex = try! NSRegularExpression(pattern: "<img[^>]*src=\"([^\"]*)\"[^>]*/?>")
+    private static let liRegex = try! NSRegularExpression(pattern: "<li[^>]*>(.*?)</li>")
+    private static let listWrapperRegex = try! NSRegularExpression(pattern: "</?[uo]l[^>]*>")
+    private static let pOpenRegex = try! NSRegularExpression(pattern: "<p[^>]*>")
+    private static let brCloseRegex = try! NSRegularExpression(pattern: "<br[^>]*/?>")
+    private static let navRegex = try! NSRegularExpression(pattern: "<nav[^>]*>[\\s\\S]*?</nav>")
+    private static let asideRegex = try! NSRegularExpression(pattern: "<aside[^>]*>[\\s\\S]*?</aside>")
+    private static let footerRegex = try! NSRegularExpression(pattern: "<footer[^>]*>[\\s\\S]*?</footer>")
+    private static let headerRegex = try! NSRegularExpression(pattern: "<header[^>]*>[\\s\\S]*?</header>")
+    private static let articleRegex = try! NSRegularExpression(pattern: "<article[^>]*>([\\s\\S]*?)</article>")
+    private static let divRegex = try! NSRegularExpression(pattern: "<div[^>]*>([\\s\\S]*?)</div>")
 
     public static let supportedExtensions: Set<String> = [
         "txt", "text", "utf8", "md", "markdown", "mmd", "rtf", "rtfd", "htm", "html",
@@ -241,15 +272,19 @@ public actor ImportExportService {
 
     // MARK: - HTML Stripping
 
+    private static func regexReplace(_ regex: NSRegularExpression, in text: String, with template: String) -> String {
+        regex.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: template)
+    }
+
     public static func stripHTML(_ html: String) -> String {
         var text = html
-        text = text.replacingOccurrences(of: "<script[^>]*>[\\s\\S]*?</script>", with: "", options: .regularExpression)
-        text = text.replacingOccurrences(of: "<style[^>]*>[\\s\\S]*?</style>", with: "", options: .regularExpression)
-        text = text.replacingOccurrences(of: "<br[^>]*>", with: "\n", options: .regularExpression)
+        text = regexReplace(scriptRegex, in: text, with: "")
+        text = regexReplace(styleRegex, in: text, with: "")
+        text = regexReplace(brRegex, in: text, with: "\n")
         text = text.replacingOccurrences(of: "</p>", with: "\n\n")
         text = text.replacingOccurrences(of: "</div>", with: "\n")
         text = text.replacingOccurrences(of: "</li>", with: "\n")
-        text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        text = regexReplace(tagRegex, in: text, with: "")
 
         let entities: [(String, String)] = [
             ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"),
@@ -258,7 +293,7 @@ public actor ImportExportService {
         for (entity, char) in entities {
             text = text.replacingOccurrences(of: entity, with: char)
         }
-        text = text.replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
+        text = regexReplace(multiNewlineRegex, in: text, with: "\n\n")
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -268,53 +303,50 @@ public actor ImportExportService {
         var text = html
 
         // Remove script and style blocks
-        text = text.replacingOccurrences(of: "<script[^>]*>[\\s\\S]*?</script>", with: "", options: .regularExpression)
-        text = text.replacingOccurrences(of: "<style[^>]*>[\\s\\S]*?</style>", with: "", options: .regularExpression)
+        text = regexReplace(scriptRegex, in: text, with: "")
+        text = regexReplace(styleRegex, in: text, with: "")
 
         // Headings
-        for level in 1...6 {
-            let prefix = String(repeating: "#", count: level)
-            text = text.replacingOccurrences(
-                of: "<h\(level)[^>]*>(.*?)</h\(level)>",
-                with: "\n\n\(prefix) $1\n\n",
-                options: .regularExpression
-            )
+        let headingRegexes = [h1Regex, h2Regex, h3Regex, h4Regex, h5Regex, h6Regex]
+        for (i, regex) in headingRegexes.enumerated() {
+            let prefix = String(repeating: "#", count: i + 1)
+            text = regexReplace(regex, in: text, with: "\n\n\(prefix) $1\n\n")
         }
 
         // Bold
-        text = text.replacingOccurrences(of: "<(strong|b)>(.*?)</\\1>", with: "**$2**", options: .regularExpression)
+        text = regexReplace(boldRegex, in: text, with: "**$2**")
         // Italic
-        text = text.replacingOccurrences(of: "<(em|i)>(.*?)</\\1>", with: "_$2_", options: .regularExpression)
+        text = regexReplace(italicRegex, in: text, with: "_$2_")
         // Code
-        text = text.replacingOccurrences(of: "<code>(.*?)</code>", with: "`$1`", options: .regularExpression)
+        text = regexReplace(codeRegex, in: text, with: "`$1`")
         // Pre/code blocks
-        text = text.replacingOccurrences(of: "<pre[^>]*><code[^>]*>(.*?)</code></pre>", with: "\n\n```\n$1\n```\n\n", options: .regularExpression)
-        text = text.replacingOccurrences(of: "<pre[^>]*>(.*?)</pre>", with: "\n\n```\n$1\n```\n\n", options: .regularExpression)
+        text = regexReplace(preCodeRegex, in: text, with: "\n\n```\n$1\n```\n\n")
+        text = regexReplace(preRegex, in: text, with: "\n\n```\n$1\n```\n\n")
 
         // Links
-        text = text.replacingOccurrences(of: "<a[^>]*href=\"([^\"]*)\"[^>]*>(.*?)</a>", with: "[$2]($1)", options: .regularExpression)
+        text = regexReplace(linkRegex, in: text, with: "[$2]($1)")
         // Images
-        text = text.replacingOccurrences(of: "<img[^>]*alt=\"([^\"]*)\"[^>]*src=\"([^\"]*)\"[^>]*/?>", with: "![$1]($2)", options: .regularExpression)
-        text = text.replacingOccurrences(of: "<img[^>]*src=\"([^\"]*)\"[^>]*alt=\"([^\"]*)\"[^>]*/?>", with: "![$2]($1)", options: .regularExpression)
-        text = text.replacingOccurrences(of: "<img[^>]*src=\"([^\"]*)\"[^>]*/?>", with: "![]($1)", options: .regularExpression)
+        text = regexReplace(imgAltSrcRegex, in: text, with: "![$1]($2)")
+        text = regexReplace(imgSrcAltRegex, in: text, with: "![$2]($1)")
+        text = regexReplace(imgSrcRegex, in: text, with: "![]($1)")
 
         // List items
-        text = text.replacingOccurrences(of: "<li[^>]*>(.*?)</li>", with: "- $1\n", options: .regularExpression)
+        text = regexReplace(liRegex, in: text, with: "- $1\n")
         // Remove list wrappers
-        text = text.replacingOccurrences(of: "</?[uo]l[^>]*>", with: "\n", options: .regularExpression)
+        text = regexReplace(listWrapperRegex, in: text, with: "\n")
 
         // Paragraphs
         text = text.replacingOccurrences(of: "</p>", with: "\n\n")
-        text = text.replacingOccurrences(of: "<p[^>]*>", with: "", options: .regularExpression)
+        text = regexReplace(pOpenRegex, in: text, with: "")
 
         // Line breaks
-        text = text.replacingOccurrences(of: "<br[^>]*/?>", with: "\n", options: .regularExpression)
+        text = regexReplace(brCloseRegex, in: text, with: "\n")
 
         // Divs
         text = text.replacingOccurrences(of: "</div>", with: "\n")
 
         // Strip remaining tags
-        text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        text = regexReplace(tagRegex, in: text, with: "")
 
         // Decode entities
         let entities: [(String, String)] = [
@@ -326,7 +358,7 @@ public actor ImportExportService {
         }
 
         // Normalize whitespace
-        text = text.replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
+        text = regexReplace(multiNewlineRegex, in: text, with: "\n\n")
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -336,41 +368,31 @@ public actor ImportExportService {
         var text = html
 
         // Remove nav, sidebar, footer, header, script, style
-        let removePatterns = [
-            "<nav[^>]*>[\\s\\S]*?</nav>",
-            "<aside[^>]*>[\\s\\S]*?</aside>",
-            "<footer[^>]*>[\\s\\S]*?</footer>",
-            "<header[^>]*>[\\s\\S]*?</header>",
-            "<script[^>]*>[\\s\\S]*?</script>",
-            "<style[^>]*>[\\s\\S]*?</style>",
-        ]
-        for pattern in removePatterns {
-            text = text.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
+        let removeRegexes = [navRegex, asideRegex, footerRegex, headerRegex, scriptRegex, styleRegex]
+        for regex in removeRegexes {
+            text = regexReplace(regex, in: text, with: "")
         }
 
         // Try to find <article> content first
-        if let articleRegex = try? NSRegularExpression(pattern: "<article[^>]*>([\\s\\S]*?)</article>", options: []),
-           let match = articleRegex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
+        if let match = articleRegex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
             let range = Range(match.range(at: 1), in: text)!
             return String(text[range])
         }
 
         // Find the largest <div> block by text content length
-        if let divRegex = try? NSRegularExpression(pattern: "<div[^>]*>([\\s\\S]*?)</div>", options: []) {
-            let matches = divRegex.matches(in: text, range: NSRange(text.startIndex..., in: text))
-            var bestContent = ""
-            for match in matches {
-                if let range = Range(match.range(at: 1), in: text) {
-                    let content = String(text[range])
-                    let stripped = stripHTML(content)
-                    if stripped.count > bestContent.count {
-                        bestContent = content
-                    }
+        let matches = divRegex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+        var bestContent = ""
+        for match in matches {
+            if let range = Range(match.range(at: 1), in: text) {
+                let content = String(text[range])
+                let stripped = stripHTML(content)
+                if stripped.count > bestContent.count {
+                    bestContent = content
                 }
             }
-            if !bestContent.isEmpty {
-                return bestContent
-            }
+        }
+        if !bestContent.isEmpty {
+            return bestContent
         }
 
         return text

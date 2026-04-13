@@ -289,6 +289,7 @@ extension Notification.Name {
     static let nvEnvyShowBookmarks = Notification.Name("nvEnvyShowBookmarks")
     static let nvEnvyOpenInMarked = Notification.Name("nvEnvyOpenInMarked")
     static let nvEnvyFocusSearchField = Notification.Name("nvEnvyFocusSearchField")
+    static let nvEnvyFocusEditor = Notification.Name("nvEnvyFocusEditor")
     static let nvEnvyShowConflicts = Notification.Name("nvEnvyShowConflicts")
     static let nvEnvyPlainTextStyle = Notification.Name("nvEnvyPlainTextStyle")
     static let nvEnvyTogglePreviewSource = Notification.Name("nvEnvyTogglePreviewSource")

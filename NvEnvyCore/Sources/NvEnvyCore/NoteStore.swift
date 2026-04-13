@@ -2,6 +2,7 @@ import Foundation
 
 public actor NoteStore {
     private var notes: [UUID: Note] = [:]
+    private var filenameIndex: [String: UUID] = [:]
     private var dirtyNoteIDs: Set<UUID> = []
     private let storage: FileStorageService
     private var flushTask: Task<Void, Never>?
@@ -15,10 +16,19 @@ public actor NoteStore {
 
     // MARK: - Load
 
+    private func indexNote(_ note: Note) {
+        filenameIndex[note.filename] = note.id
+    }
+
+    private func unindexNote(_ note: Note) {
+        filenameIndex.removeValue(forKey: note.filename)
+    }
+
     public func loadAll() async throws {
         let loaded = try await storage.readAllNotes()
         for note in loaded {
             notes[note.id] = note
+            indexNote(note)
         }
 
         // Recover any pending WAL entries from a previous crash
@@ -44,6 +54,7 @@ public actor NoteStore {
                         modifiedDate: rec.timestamp
                     )
                     notes[note.id] = note
+                    indexNote(note)
                     dirtyNoteIDs.insert(note.id)
                 }
             }
@@ -67,6 +78,7 @@ public actor NoteStore {
         let uniqueName = await storage.ensureUniqueFilename(sanitized)
         let note = Note(title: title, filename: uniqueName)
         notes[note.id] = note
+        indexNote(note)
         markDirty(note.id)
         return note
     }
@@ -76,33 +88,32 @@ public actor NoteStore {
         let uniqueName = await storage.ensureUniqueFilename(sanitized)
         let note = Note(title: title, body: body, tags: tags, filename: uniqueName)
         notes[note.id] = note
+        indexNote(note)
         markDirty(note.id)
         return note
     }
 
     public func updateBody(noteID: UUID, body: String) {
-        guard let note = notes[noteID] else { return }
-        note.body = body
-        note.modifiedDate = Date()
-        note.invalidateSearchCache()
+        guard notes[noteID] != nil else { return }
+        // Note is a reference type shared with AppState — already mutated by caller
         markDirty(noteID)
     }
 
     public func updateTags(noteID: UUID, tags: [String]) {
-        guard let note = notes[noteID] else { return }
-        note.tags = tags
-        note.modifiedDate = Date()
-        note.invalidateSearchCache()
+        guard notes[noteID] != nil else { return }
+        // Note is a reference type shared with AppState — already mutated by caller
         markDirty(noteID)
     }
 
     public func updateTitle(noteID: UUID, title: String) async throws {
         guard let note = notes[noteID] else { return }
         let oldFilename = note.filename
+        unindexNote(note)
         note.title = title
         note.filename = Note.sanitizedFilename(from: title)
         note.modifiedDate = Date()
         note.invalidateSearchCache()
+        indexNote(note)
         try await storage.renameNote(note, oldFilename: oldFilename)
         markDirty(noteID)
     }
@@ -110,6 +121,7 @@ public actor NoteStore {
     public func deleteNote(noteID: UUID) async throws {
         guard let note = notes[noteID] else { return }
         try await storage.deleteNote(note)
+        unindexNote(note)
         notes.removeValue(forKey: noteID)
         dirtyNoteIDs.remove(noteID)
     }
@@ -117,7 +129,7 @@ public actor NoteStore {
     // MARK: - Sync Status
 
     public func updateSyncStatus(filename: String, status: SyncStatus) {
-        guard let note = notes.values.first(where: { $0.filename == filename }) else { return }
+        guard let id = filenameIndex[filename], let note = notes[id] else { return }
         note.syncStatus = status
     }
 
@@ -179,7 +191,7 @@ public actor NoteStore {
 
         // Detect new and modified files
         for (filename, fileNote) in fileByName {
-            if let existing = notes.values.first(where: { $0.filename == filename }) {
+            if let existingID = filenameIndex[filename], let existing = notes[existingID] {
                 // Check if file is newer
                 if let fileMod = fileNote.fileModifiedDate,
                    let existMod = existing.fileModifiedDate,
@@ -194,6 +206,7 @@ public actor NoteStore {
             } else {
                 // New file
                 notes[fileNote.id] = fileNote
+                indexNote(fileNote)
             }
         }
 
@@ -201,6 +214,7 @@ public actor NoteStore {
         let fileNames = Set(fileByName.keys)
         let toRemove = notes.values.filter { !fileNames.contains($0.filename) }
         for note in toRemove {
+            unindexNote(note)
             notes.removeValue(forKey: note.id)
         }
     }

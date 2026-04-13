@@ -31,23 +31,33 @@ struct EditorView: View {
 
 struct WordCountOverlay: View {
     let text: String
-
-    private var wordCount: Int {
-        text.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
-    }
-    private var charCount: Int { text.count }
-    private var lineCount: Int {
-        text.isEmpty ? 0 : text.components(separatedBy: "\n").count
-    }
+    @State private var stats: (words: Int, chars: Int, lines: Int) = (0, 0, 0)
+    @State private var updateTask: Task<Void, Never>?
 
     var body: some View {
-        Text("\(wordCount) words | \(charCount) chars | \(lineCount) lines")
+        Text("\(stats.words) words | \(stats.chars) chars | \(stats.lines) lines")
             .font(.caption)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-            .accessibilityLabel("Word count: \(wordCount) words, \(charCount) characters, \(lineCount) lines")
+            .accessibilityLabel("Word count: \(stats.words) words, \(stats.chars) characters, \(stats.lines) lines")
             .accessibilityAddTraits(.updatesFrequently)
+            .onAppear { computeStats(text) }
+            .onChange(of: text) { _, newValue in
+                updateTask?.cancel()
+                updateTask = Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard !Task.isCancelled else { return }
+                    computeStats(newValue)
+                }
+            }
+    }
+
+    private func computeStats(_ text: String) {
+        let w = text.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
+        let c = text.count
+        let l = text.isEmpty ? 0 : text.components(separatedBy: "\n").count
+        stats = (w, c, l)
     }
 }
 
@@ -104,6 +114,13 @@ struct NoteTextEditor: NSViewRepresentable {
             object: nil
         )
 
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.handleFocusEditor(_:)),
+            name: .nvEnvyFocusEditor,
+            object: nil
+        )
+
         return scrollView
     }
 
@@ -125,8 +142,12 @@ struct NoteTextEditor: NSViewRepresentable {
             textView.undoManager?.removeAllActions()
             textView.string = note.body
             coordinator.isUpdating = false
-            coordinator.applyTextAttributes(textView)
             coordinator.lastHighlightedSearchQuery = appState.searchQuery
+            // Defer attribute application (wikilinks, search highlights, @done)
+            // to after first paint so the text appears instantly on note switch.
+            DispatchQueue.main.async {
+                coordinator.applyTextAttributes(textView)
+            }
             return
         }
 
@@ -170,6 +191,7 @@ struct NoteTextEditor: NSViewRepresentable {
         var lastHighlightedSearchQuery = ""
         var highlightWorkItem: DispatchWorkItem?
         weak var textView: NSTextView?
+        var lastEditedRange: NSRange?
 
         private static let autoPairs: [String: String] = [
             "(": ")", "[": "]", "{": "}", "\"": "\"", "`": "`"
@@ -185,20 +207,27 @@ struct NoteTextEditor: NSViewRepresentable {
                   let noteID = currentNoteID else { return }
             appState.updateNoteBody(noteID: noteID, body: textView.string)
 
-            // Debounce wikilink/done highlighting to avoid full-range attribute
-            // manipulation on every keystroke, which causes scroll jitter.
-            // highlightWikilinks does removeAttribute(.link, fullRange) which invalidates
-            // layout for the entire document — at the bottom of a long note this causes
-            // visible scroll bouncing, especially on space (word-boundary processing).
-            // The ensureLayout/setNeedsDisplay after highlighting prevents white-flash
-            // artifacts from incomplete layout after the deferred attribute changes.
+            // Capture the edited range for incremental highlighting.
+            // Expand to full paragraph(s) so wikilinks/done spanning the edit are caught.
+            let editedParagraph: NSRange
+            if let edited = lastEditedRange {
+                editedParagraph = (textView.string as NSString).paragraphRange(for: edited)
+            } else {
+                editedParagraph = (textView.string as NSString).paragraphRange(
+                    for: textView.selectedRange()
+                )
+            }
+            lastEditedRange = nil
+
+            // Debounced incremental highlight — only processes the edited paragraph,
+            // not the full document, avoiding full-layout invalidation.
             highlightWorkItem?.cancel()
             let workItem = DispatchWorkItem { [weak self] in
                 guard let self, let textView = self.textView else { return }
-                self.highlightWikilinks(in: textView)
-                self.applyDoneStrikethrough(in: textView)
-                textView.layoutManager?.ensureLayout(for: textView.textContainer!)
-                textView.setNeedsDisplay(textView.visibleRect)
+                textView.textStorage?.beginEditing()
+                self.highlightWikilinksIncremental(in: textView, range: editedParagraph)
+                self.applyDoneStrikethroughIncremental(in: textView, range: editedParagraph)
+                textView.textStorage?.endEditing()
             }
             highlightWorkItem = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
@@ -218,7 +247,12 @@ struct NoteTextEditor: NSViewRepresentable {
                 return true
             }
             if commandSelector == #selector(NSResponder.insertBacktab(_:)) {
-                return handleOutdent(textView)
+                // Shift+Tab: move focus to the note list
+                if let window = textView.window,
+                   let tableView = Self.findTableView(in: window.contentView) {
+                    window.makeFirstResponder(tableView)
+                }
+                return true
             }
             if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
                 NotificationCenter.default.post(name: .nvEnvyFocusSearchField, object: nil)
@@ -229,6 +263,10 @@ struct NoteTextEditor: NSViewRepresentable {
 
         func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange, replacementString: String?) -> Bool {
             guard let replacement = replacementString else { return true }
+
+            // Track edited range for incremental highlighting
+            let newLength = (replacement as NSString).length
+            lastEditedRange = NSRange(location: affectedCharRange.location, length: newLength)
 
             // Auto-pair
             if appState.autoPairEnabled, replacement.count == 1,
@@ -294,20 +332,19 @@ struct NoteTextEditor: NSViewRepresentable {
             return true
         }
 
+        private static let unorderedListRegex = try! NSRegularExpression(pattern: "^(\\s*)([-*])\\s")
+        private static let orderedListRegex = try! NSRegularExpression(pattern: "^(\\s*)(\\d+)\\.\\s")
+
         private func listContinuation(for line: String) -> String? {
             let trimmedLine = line.replacingOccurrences(of: "\n", with: "")
 
-            let unorderedPattern = "^(\\s*)([-*])\\s"
-            if let regex = try? NSRegularExpression(pattern: unorderedPattern),
-               let match = regex.firstMatch(in: trimmedLine, range: NSRange(trimmedLine.startIndex..., in: trimmedLine)) {
+            if let match = Self.unorderedListRegex.firstMatch(in: trimmedLine, range: NSRange(trimmedLine.startIndex..., in: trimmedLine)) {
                 let indent = (trimmedLine as NSString).substring(with: match.range(at: 1))
                 let marker = (trimmedLine as NSString).substring(with: match.range(at: 2))
                 return indent + marker + " "
             }
 
-            let orderedPattern = "^(\\s*)(\\d+)\\.\\s"
-            if let regex = try? NSRegularExpression(pattern: orderedPattern),
-               let match = regex.firstMatch(in: trimmedLine, range: NSRange(trimmedLine.startIndex..., in: trimmedLine)) {
+            if let match = Self.orderedListRegex.firstMatch(in: trimmedLine, range: NSRange(trimmedLine.startIndex..., in: trimmedLine)) {
                 let indent = (trimmedLine as NSString).substring(with: match.range(at: 1))
                 let numStr = (trimmedLine as NSString).substring(with: match.range(at: 2))
                 if let num = Int(numStr) {
@@ -373,6 +410,26 @@ struct NoteTextEditor: NSViewRepresentable {
             }
         }
 
+        /// Incremental version: only re-highlights wikilinks within the given range.
+        func highlightWikilinksIncremental(in textView: NSTextView, range: NSRange) {
+            guard let textStorage = textView.textStorage else { return }
+            let text = textView.string
+            let nsText = text as NSString
+            let safeRange = NSIntersectionRange(range, NSRange(location: 0, length: nsText.length))
+            guard safeRange.length > 0 else { return }
+
+            textStorage.removeAttribute(.link, range: safeRange)
+
+            let substring = nsText.substring(with: safeRange)
+            let wikilinks = WikilinkParser.findWikilinkNSRanges(in: substring)
+            for wl in wikilinks {
+                let adjustedRange = NSRange(location: wl.range.location + safeRange.location, length: wl.range.length)
+                let encodedTitle = wl.title.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? wl.title
+                let linkURL = "wikilink://\(encodedTitle)"
+                textStorage.addAttribute(.link, value: linkURL, range: adjustedRange)
+            }
+        }
+
         func highlightSearchTerms(in textView: NSTextView) {
             guard let textStorage = textView.textStorage else { return }
             let text = textView.string
@@ -408,6 +465,24 @@ struct NoteTextEditor: NSViewRepresentable {
             textStorage.removeAttribute(.strikethroughStyle, range: fullRange)
 
             text.enumerateSubstrings(in: fullRange, options: .byLines) { line, lineRange, _, _ in
+                guard let line else { return }
+                if line.contains("@done") {
+                    textStorage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: lineRange)
+                }
+            }
+        }
+
+        /// Incremental version: only re-applies @done strikethrough within the given range.
+        func applyDoneStrikethroughIncremental(in textView: NSTextView, range: NSRange) {
+            guard appState.doneStrikethroughEnabled,
+                  let textStorage = textView.textStorage else { return }
+            let text = textView.string as NSString
+            let safeRange = NSIntersectionRange(range, NSRange(location: 0, length: text.length))
+            guard safeRange.length > 0 else { return }
+
+            textStorage.removeAttribute(.strikethroughStyle, range: safeRange)
+
+            text.enumerateSubstrings(in: safeRange, options: .byLines) { line, lineRange, _, _ in
                 guard let line else { return }
                 if line.contains("@done") {
                     textStorage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: lineRange)
@@ -599,6 +674,20 @@ struct NoteTextEditor: NSViewRepresentable {
 
         // MARK: - Plain Text Style
 
+        private static let plainTextRegexes: [(NSRegularExpression, String)] = {
+            let patterns: [(String, String)] = [
+                ("\\*\\*(.+?)\\*\\*", "$1"),
+                ("__(.+?)__", "$1"),
+                ("(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)", "$1"),
+                ("(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", "$1"),
+                ("~~(.+?)~~", "$1"),
+                ("`([^`]+)`", "$1"),
+                ("\\[([^\\]]+)\\]\\([^)]+\\)", "$1"),
+                ("(?m)^#{1,6}\\s+", ""),
+            ]
+            return patterns.map { (try! NSRegularExpression(pattern: $0.0), $0.1) }
+        }()
+
         @objc func handlePlainTextStyle(_ notification: Notification) {
             guard let textView = textView else { return }
             let selectedRange = textView.selectedRange()
@@ -606,22 +695,27 @@ struct NoteTextEditor: NSViewRepresentable {
 
             var text = (textView.string as NSString).substring(with: selectedRange)
 
-            // Strip bold **text** or __text__
-            text = text.replacingOccurrences(of: "\\*\\*(.+?)\\*\\*", with: "$1", options: .regularExpression)
-            text = text.replacingOccurrences(of: "__(.+?)__", with: "$1", options: .regularExpression)
-            // Strip italic _text_ or *text*
-            text = text.replacingOccurrences(of: "(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)", with: "$1", options: .regularExpression)
-            text = text.replacingOccurrences(of: "(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", with: "$1", options: .regularExpression)
-            // Strip strikethrough ~~text~~
-            text = text.replacingOccurrences(of: "~~(.+?)~~", with: "$1", options: .regularExpression)
-            // Strip inline code `text`
-            text = text.replacingOccurrences(of: "`([^`]+)`", with: "$1", options: .regularExpression)
-            // Strip link syntax [text](url) → text
-            text = text.replacingOccurrences(of: "\\[([^\\]]+)\\]\\([^)]+\\)", with: "$1", options: .regularExpression)
-            // Strip heading prefixes
-            text = text.replacingOccurrences(of: "(?m)^#{1,6}\\s+", with: "", options: .regularExpression)
+            for (regex, template) in Self.plainTextRegexes {
+                text = regex.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: template)
+            }
 
             textView.insertText(text, replacementRange: selectedRange)
+        }
+
+        // MARK: - Focus Navigation
+
+        static func findTableView(in view: NSView?) -> NSTableView? {
+            guard let view else { return nil }
+            if let tableView = view as? NSTableView { return tableView }
+            for subview in view.subviews {
+                if let found = findTableView(in: subview) { return found }
+            }
+            return nil
+        }
+
+        @objc func handleFocusEditor(_ notification: Notification) {
+            guard let textView = textView else { return }
+            textView.window?.makeFirstResponder(textView)
         }
 
         // MARK: - Paste as Markdown Link

@@ -22,13 +22,10 @@ struct SearchField: View {
                 }
                 .onKeyPress(.downArrow) {
                     onDownArrow()
-                    isFocused = false
-                    // Find the NSTableView (backing SwiftUI List) and make it first responder
-                    DispatchQueue.main.async {
-                        if let window = NSApp.keyWindow,
-                           let tableView = Self.findTableView(in: window.contentView) {
-                            window.makeFirstResponder(tableView)
-                        }
+                    // Find the NSTableView (backing SwiftUI List) and make it first responder directly
+                    if let window = NSApp.keyWindow,
+                       let tableView = Self.findTableView(in: window.contentView) {
+                        window.makeFirstResponder(tableView)
                     }
                     return .handled
                 }

@@ -50,11 +50,30 @@ private let kAllowedExtensionsKey = "allowedExtensions"
 @MainActor
 @Observable
 public final class AppState {
+    private var searchDebounceTask: Task<Void, Never>?
+
     public var searchQuery: String = "" {
-        didSet { performSearch() }
+        didSet {
+            searchDebounceTask?.cancel()
+            searchDebounceTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled, let self else { return }
+                self.performSearch()
+            }
+        }
     }
-    public var allNotes: [Note] = []
-    public var filteredNotes: [Note] = []
+    public var allNotes: [Note] = [] {
+        didSet {
+            _cachedKnownTags = nil
+            rebuildNotesByID()
+        }
+    }
+    private var notesByID: [UUID: Note] = [:]
+    private var _cachedKnownTags: [String]?
+    public var filteredNotes: [Note] = [] {
+        didSet { rebuildSortedNotes() }
+    }
+    public var sortedNotes: [Note] = []
     public private(set) var notesFolderURL: URL?
     public var editorFont: NSFont
     public var selectedNoteID: Note.ID?
@@ -150,10 +169,16 @@ public final class AppState {
 
     // Note list preferences
     public var sortField: SortField {
-        didSet { UserDefaults.standard.set(sortField.rawValue, forKey: kSortFieldKey) }
+        didSet {
+            UserDefaults.standard.set(sortField.rawValue, forKey: kSortFieldKey)
+            rebuildSortedNotes()
+        }
     }
     public var sortAscending: Bool {
-        didSet { UserDefaults.standard.set(sortAscending, forKey: kSortAscendingKey) }
+        didSet {
+            UserDefaults.standard.set(sortAscending, forKey: kSortAscendingKey)
+            rebuildSortedNotes()
+        }
     }
     public var tableFontSize: CGFloat {
         didSet { UserDefaults.standard.set(Double(tableFontSize), forKey: kTableFontSizeKey) }
@@ -294,17 +319,25 @@ public final class AppState {
     public var showPreview: Bool = false
     public var previewStickyNoteID: Note.ID?
 
-    // All known tags (derived from all notes)
+    // All known tags (derived from all notes, cached)
     public var allKnownTags: [String] {
-        let tagSets = allNotes.flatMap(\.tags)
-        return Array(Set(tagSets)).sorted()
+        if let cached = _cachedKnownTags { return cached }
+        let tags = Array(Set(allNotes.flatMap(\.tags))).sorted()
+        _cachedKnownTags = tags
+        return tags
     }
 
     // Sync health
     public var syncHealthSummary: String {
-        let uploading = allNotes.filter { $0.syncStatus == .uploading }.count
-        let downloading = allNotes.filter { $0.syncStatus == .downloading }.count
-        let conflicts = allNotes.filter { $0.syncStatus == .conflict }.count
+        var uploading = 0, downloading = 0, conflicts = 0
+        for note in allNotes {
+            switch note.syncStatus {
+            case .uploading: uploading += 1
+            case .downloading: downloading += 1
+            case .conflict: conflicts += 1
+            default: break
+            }
+        }
 
         if conflicts > 0 {
             return "\(conflicts) conflict\(conflicts == 1 ? "" : "s")"
@@ -536,6 +569,10 @@ public final class AppState {
     public func clearSearch() {
         searchQuery = ""
         tagFilter = nil
+        // searchQuery didSet already scheduled a debounced search,
+        // but clearing should be instant — cancel debounce and run now.
+        searchDebounceTask?.cancel()
+        performSearch()
     }
 
     public func createOrSelectNote() {
@@ -560,18 +597,52 @@ public final class AppState {
 
     // MARK: - Note Operations
 
-    public func note(for id: UUID) -> Note? {
-        allNotes.first { $0.id == id }
+    private func rebuildNotesByID() {
+        notesByID = Dictionary(uniqueKeysWithValues: allNotes.map { ($0.id, $0) })
     }
+
+    private func rebuildSortedNotes() {
+        let notes = filteredNotes
+        let ascending = sortAscending
+        switch sortField {
+        case .title:
+            sortedNotes = notes.sorted {
+                let cmp = $0.title.localizedCaseInsensitiveCompare($1.title)
+                return ascending ? cmp == .orderedAscending : cmp == .orderedDescending
+            }
+        case .modifiedDate:
+            sortedNotes = notes.sorted { ascending ? $0.modifiedDate < $1.modifiedDate : $0.modifiedDate > $1.modifiedDate }
+        case .createdDate:
+            sortedNotes = notes.sorted { ascending ? $0.createdDate < $1.createdDate : $0.createdDate > $1.createdDate }
+        case .tags:
+            sortedNotes = notes.sorted {
+                let t0 = $0.tags.first ?? ""
+                let t1 = $1.tags.first ?? ""
+                let cmp = t0.localizedCaseInsensitiveCompare(t1)
+                return ascending ? cmp == .orderedAscending : cmp == .orderedDescending
+            }
+        }
+    }
+
+    public func note(for id: UUID) -> Note? {
+        notesByID[id]
+    }
+
+    private var bodyUpdateTask: Task<Void, Never>?
 
     public func updateNoteBody(noteID: UUID, body: String) {
         guard let note = note(for: noteID) else { return }
         note.body = body
         note.modifiedDate = Date()
-        note.invalidateSearchCache()
 
-        Task {
-            await noteStore?.updateBody(noteID: noteID, body: body)
+        // Debounce expensive work: search cache invalidation, WAL write, and dirty marking.
+        // Only the body assignment and timestamp need to be synchronous.
+        bodyUpdateTask?.cancel()
+        bodyUpdateTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled, let self else { return }
+            note.invalidateSearchCache()
+            await self.noteStore?.updateBody(noteID: noteID, body: body)
         }
     }
 
@@ -580,6 +651,7 @@ public final class AppState {
         note.tags = tags
         note.modifiedDate = Date()
         note.invalidateSearchCache()
+        _cachedKnownTags = nil
 
         Task {
             await noteStore?.updateTags(noteID: noteID, tags: tags)
@@ -1005,6 +1077,15 @@ public final class AppState {
     // MARK: - Flush on quit
 
     public func flushBeforeQuit() async {
+        // Flush any pending debounced body update immediately
+        if let task = bodyUpdateTask {
+            task.cancel()
+            bodyUpdateTask = nil
+            // Invalidate search caches for all dirty notes and mark them
+            for note in allNotes {
+                note.invalidateSearchCache()
+            }
+        }
         await noteStore?.flushDirtyNotes()
     }
 }
