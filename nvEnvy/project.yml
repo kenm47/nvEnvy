@@ -24,6 +24,7 @@ targets:
       path: nvEnvy/Info.plist
       properties:
         CFBundleIconFile: AppIcon
+        ATSApplicationFontsPath: Fonts
         CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
         SUFeedURL: "https://nvenvy.com/appcast.xml"
@@ -77,7 +78,12 @@ targets:
             CFBundleTypeRole: Viewer
             LSHandlerRank: None
     sources:
-      - nvEnvy
+      - path: nvEnvy
+        excludes:
+          - "Fonts"
+      - path: nvEnvy/Fonts
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nvenvy.app

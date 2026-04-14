@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreText
 import NvEnvyCore
 import KeyboardShortcuts
 
@@ -137,20 +138,94 @@ struct EditingPreferencesView: View {
 
 struct FontsColorsPreferencesView: View {
     @Environment(AppState.self) private var appState
+    @State private var selectedFont: String = "system-mono"
+    @State private var fontSize: CGFloat = 14
+
+    private static let fontOptions: [(id: String, displayName: String, postScriptName: String?)] = [
+        ("system-mono", "System Mono", nil),
+        ("atkinson", "Atkinson Hyperlegible", "AtkinsonHyperlegible-Regular"),
+        ("opendyslexic", "OpenDyslexic", "OpenDyslexic-Regular"),
+        ("custom", "Other...", nil),
+    ]
+
+    private static func fontID(for nsFont: NSFont) -> String {
+        let name = nsFont.fontName
+        if name.contains("SFMono") || name.contains("Menlo") {
+            return "system-mono"
+        }
+        for opt in fontOptions where opt.postScriptName != nil {
+            if name == opt.postScriptName { return opt.id }
+        }
+        return "custom"
+    }
+
+    private func applyFont(id: String, size: CGFloat) {
+        switch id {
+        case "system-mono":
+            appState.setEditorFont(NSFont.monospacedSystemFont(ofSize: size, weight: .regular))
+        case "custom":
+            NSFontManager.shared.orderFrontFontPanel(nil)
+            return
+        default:
+            if let opt = Self.fontOptions.first(where: { $0.id == id }),
+               let psName = opt.postScriptName {
+                if let font = NSFont(name: psName, size: size) {
+                    appState.setEditorFont(font)
+                } else {
+                    // Font not registered by ATSApplicationFontsPath — register manually
+                    Self.registerBundledFont(postScriptName: psName)
+                    if let font = NSFont(name: psName, size: size) {
+                        appState.setEditorFont(font)
+                    }
+                }
+            }
+        }
+    }
+
+    private static func registerBundledFont(postScriptName: String) {
+        for ext in ["ttf", "otf"] {
+            if let url = Bundle.main.url(forResource: postScriptName, withExtension: ext, subdirectory: "Fonts")
+                ?? Bundle.main.url(forResource: postScriptName, withExtension: ext) {
+                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+                return
+            }
+        }
+    }
 
     var body: some View {
         @Bindable var appState = appState
         Form {
             Section("Editor Font") {
-                HStack {
-                    Text(appState.editorFont.displayName ?? "System Font")
-                    Text("\(Int(appState.editorFont.pointSize))pt")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Change...") {
-                        NSFontManager.shared.orderFrontFontPanel(nil)
+                Picker("Font:", selection: $selectedFont) {
+                    ForEach(Self.fontOptions, id: \.id) { opt in
+                        Text(opt.displayName).tag(opt.id)
                     }
                 }
+                .onChange(of: selectedFont) { _, newID in
+                    applyFont(id: newID, size: fontSize)
+                }
+
+                HStack {
+                    Text("\(Int(fontSize))pt")
+                        .foregroundStyle(.secondary)
+                    Stepper("", value: $fontSize, in: 9...72, step: 1)
+                        .onChange(of: fontSize) { _, newSize in
+                            applyFont(id: selectedFont, size: newSize)
+                        }
+                    Spacer()
+                    Button("System Font Panel...") {
+                        NSFontManager.shared.orderFrontFontPanel(nil)
+                    }
+                    .controlSize(.small)
+                }
+
+                Text("Atkinson Hyperlegible — optimized for low-vision readers\nOpenDyslexic — weighted letterforms for dyslexic readers")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .onAppear {
+                selectedFont = Self.fontID(for: appState.editorFont)
+                fontSize = appState.editorFont.pointSize
             }
 
             Section("Colors") {
