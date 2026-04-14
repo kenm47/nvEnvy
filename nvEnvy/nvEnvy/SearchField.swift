@@ -26,6 +26,10 @@ struct SearchField: View {
                     if let window = NSApp.keyWindow,
                        let tableView = Self.findTableView(in: window.contentView) {
                         window.makeFirstResponder(tableView)
+                        // Ensure row 0 is visually selected so keyboard highlight is visible
+                        if tableView.numberOfRows > 0 {
+                            tableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+                        }
                     }
                     return .handled
                 }

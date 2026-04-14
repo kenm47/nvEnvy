@@ -36,6 +36,8 @@ struct MainView: View {
                     onReturn: {
                         if appState.isRenaming {
                             appState.commitRename()
+                        } else if appState.selectedNoteID != nil {
+                            // Note already selected — just focus editor
                         } else {
                             appState.createOrSelectNote()
                         }

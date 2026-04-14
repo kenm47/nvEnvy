@@ -602,6 +602,11 @@ public final class AppState {
     }
 
     private func rebuildSortedNotes() {
+        // When a search is active, preserve the relevance ordering from SearchEngine
+        if !searchQuery.isEmpty {
+            sortedNotes = filteredNotes
+            return
+        }
         let notes = filteredNotes
         let ascending = sortAscending
         switch sortField {
@@ -710,27 +715,27 @@ public final class AppState {
     // MARK: - Note Selection
 
     public func selectNextNote() {
-        guard !filteredNotes.isEmpty else { return }
+        guard !sortedNotes.isEmpty else { return }
         if let current = selectedNoteID,
-           let idx = filteredNotes.firstIndex(where: { $0.id == current }) {
-            let nextIdx = filteredNotes.index(after: idx)
-            if nextIdx < filteredNotes.endIndex {
-                selectedNoteID = filteredNotes[nextIdx].id
+           let idx = sortedNotes.firstIndex(where: { $0.id == current }) {
+            let nextIdx = sortedNotes.index(after: idx)
+            if nextIdx < sortedNotes.endIndex {
+                selectedNoteID = sortedNotes[nextIdx].id
             }
         } else {
-            selectedNoteID = filteredNotes.first?.id
+            selectedNoteID = sortedNotes.first?.id
         }
     }
 
     public func selectPreviousNote() {
-        guard !filteredNotes.isEmpty else { return }
+        guard !sortedNotes.isEmpty else { return }
         if let current = selectedNoteID,
-           let idx = filteredNotes.firstIndex(where: { $0.id == current }) {
-            if idx > filteredNotes.startIndex {
-                selectedNoteID = filteredNotes[filteredNotes.index(before: idx)].id
+           let idx = sortedNotes.firstIndex(where: { $0.id == current }) {
+            if idx > sortedNotes.startIndex {
+                selectedNoteID = sortedNotes[sortedNotes.index(before: idx)].id
             }
         } else {
-            selectedNoteID = filteredNotes.last?.id
+            selectedNoteID = sortedNotes.last?.id
         }
     }
 

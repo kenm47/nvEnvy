@@ -39,9 +39,16 @@ public struct SearchEngine: Sendable {
             return true
         }
 
+        // Sort by relevance: exact title match first, then title contains, then body/tag only
+        let sorted = results.sorted { a, b in
+            let tierA = relevanceTier(note: a, query: lowercaseQuery, tokens: tokens)
+            let tierB = relevanceTier(note: b, query: lowercaseQuery, tokens: tokens)
+            return tierA < tierB
+        }
+
         previousQuery = lowercaseQuery
-        previousResults = results
-        return results
+        previousResults = sorted
+        return sorted
     }
 
     public func exactTitleMatch(notes: [Note], query: String) -> Note? {
@@ -53,6 +60,14 @@ public struct SearchEngine: Sendable {
         guard !query.isEmpty else { return nil }
         let lowerQuery = query.lowercased()
         return notes.first { $0.cachedLowercaseTitle.hasPrefix(lowerQuery) }
+    }
+
+    /// Returns 0 for exact title match, 1 for title contains, 2 for body/tag only.
+    private func relevanceTier(note: Note, query: String, tokens: [String]) -> Int {
+        if note.cachedLowercaseTitle == query { return 0 }
+        let allInTitle = tokens.allSatisfy { note.cachedLowercaseTitle.contains($0) }
+        if allInTitle { return 1 }
+        return 2
     }
 
     private func tokenize(_ query: String) -> [String] {
