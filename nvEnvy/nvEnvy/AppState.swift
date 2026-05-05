@@ -482,6 +482,10 @@ public final class AppState {
         _ = url.startAccessingSecurityScopedResource()
         notesFolderURL = url
         setupMonitors(url: url)
+
+        let store = NSUbiquitousKeyValueStore.default
+        store.set(url.path, forKey: "lastPickedNotesFolderPath")
+        store.synchronize()
     }
 
     private func restoreNotesFolder() {
