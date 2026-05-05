@@ -145,7 +145,6 @@ struct FontsColorsPreferencesView: View {
         ("system-mono", "System Mono", nil),
         ("atkinson", "Atkinson Hyperlegible", "AtkinsonHyperlegible-Regular"),
         ("opendyslexic", "OpenDyslexic", "OpenDyslexic-Regular"),
-        ("custom", "Other...", nil),
     ]
 
     private static func fontID(for nsFont: NSFont) -> String {
@@ -156,16 +155,13 @@ struct FontsColorsPreferencesView: View {
         for opt in fontOptions where opt.postScriptName != nil {
             if name == opt.postScriptName { return opt.id }
         }
-        return "custom"
+        return "system-mono"
     }
 
     private func applyFont(id: String, size: CGFloat) {
         switch id {
         case "system-mono":
             appState.setEditorFont(NSFont.monospacedSystemFont(ofSize: size, weight: .regular))
-        case "custom":
-            NSFontManager.shared.orderFrontFontPanel(nil)
-            return
         default:
             if let opt = Self.fontOptions.first(where: { $0.id == id }),
                let psName = opt.postScriptName {
@@ -212,11 +208,6 @@ struct FontsColorsPreferencesView: View {
                         .onChange(of: fontSize) { _, newSize in
                             applyFont(id: selectedFont, size: newSize)
                         }
-                    Spacer()
-                    Button("System Font Panel...") {
-                        NSFontManager.shared.orderFrontFontPanel(nil)
-                    }
-                    .controlSize(.small)
                 }
 
                 Text("Atkinson Hyperlegible — optimized for low-vision readers\nOpenDyslexic — weighted letterforms for dyslexic readers")
