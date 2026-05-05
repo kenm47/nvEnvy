@@ -1,23 +1,50 @@
 import Foundation
 
+/// Wraps file I/O so iOS can adopt `NSFileCoordinator` for iCloud safety while
+/// macOS stays on direct I/O (preserves read-perf wins). The Phase 4 iOS
+/// adapter will replace `PassthroughFileAccessCoordinator` with one that calls
+/// `NSFileCoordinator.coordinate(readingItemAt:...)` / `coordinate(writingItemAt:...)`.
+public protocol FileAccessCoordinator: Sendable {
+    func coordinate<T>(readingItemAt url: URL, _ work: (URL) throws -> T) throws -> T
+    func coordinate<T>(writingItemAt url: URL, _ work: (URL) throws -> T) throws -> T
+}
+
+public struct PassthroughFileAccessCoordinator: FileAccessCoordinator {
+    public init() {}
+    public func coordinate<T>(readingItemAt url: URL, _ work: (URL) throws -> T) throws -> T {
+        try work(url)
+    }
+    public func coordinate<T>(writingItemAt url: URL, _ work: (URL) throws -> T) throws -> T {
+        try work(url)
+    }
+}
+
 public actor FileStorageService {
     private let fileManager = FileManager.default
     public let notesDirectory: URL
+    private let coordinator: FileAccessCoordinator
 
-    public init(notesDirectory: URL, allowedExtensions: Set<String>? = nil) {
+    public init(
+        notesDirectory: URL,
+        allowedExtensions: Set<String>? = nil,
+        coordinator: FileAccessCoordinator = PassthroughFileAccessCoordinator()
+    ) {
         self.notesDirectory = notesDirectory
         self.allowedExtensions = allowedExtensions ?? Self.defaultAllowedExtensions
+        self.coordinator = coordinator
     }
 
     // MARK: - Read
 
     public func readNote(at url: URL) throws -> (parsed: ParsedNote, encoding: String.Encoding) {
-        let data = try Data(contentsOf: url)
-        let (content, encoding) = Self.decodeWithFallback(data)
-        guard let content else {
-            throw FileStorageError.encodingError
+        try coordinator.coordinate(readingItemAt: url) { resolvedURL in
+            let data = try Data(contentsOf: resolvedURL)
+            let (content, encoding) = Self.decodeWithFallback(data)
+            guard let content else {
+                throw FileStorageError.encodingError
+            }
+            return (FrontmatterParser.parse(content), encoding)
         }
-        return (FrontmatterParser.parse(content), encoding)
     }
 
     /// Try UTF-8, then UTF-16, then ISO Latin-1 / MacRoman.
@@ -123,21 +150,27 @@ public actor FileStorageService {
         )
 
         let url = fileURL(for: note)
-        try atomicWrite(content: content, to: url, encoding: note.fileEncoding)
+        try coordinator.coordinate(writingItemAt: url) { resolvedURL in
+            try self.atomicWrite(content: content, to: resolvedURL, encoding: note.fileEncoding)
+        }
     }
 
     public func deleteNote(_ note: Note) throws {
         let url = fileURL(for: note)
-        if fileManager.fileExists(atPath: url.path) {
-            try fileManager.removeItem(at: url)
+        try coordinator.coordinate(writingItemAt: url) { resolvedURL in
+            if self.fileManager.fileExists(atPath: resolvedURL.path) {
+                try self.fileManager.removeItem(at: resolvedURL)
+            }
         }
     }
 
     public func renameNote(_ note: Note, oldFilename: String) throws {
         let oldURL = notesDirectory.appendingPathComponent(oldFilename + ".md")
         let newURL = fileURL(for: note)
-        if fileManager.fileExists(atPath: oldURL.path) && oldURL != newURL {
-            try fileManager.moveItem(at: oldURL, to: newURL)
+        try coordinator.coordinate(writingItemAt: oldURL) { resolvedOld in
+            if self.fileManager.fileExists(atPath: resolvedOld.path) && resolvedOld != newURL {
+                try self.fileManager.moveItem(at: resolvedOld, to: newURL)
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 import XCTest
 @testable import NvEnvyCore
 
+#if os(macOS)
 final class FinderTagServiceTests: XCTestCase {
     var tempDir: URL!
 
@@ -59,3 +60,4 @@ final class FinderTagServiceTests: XCTestCase {
         XCTAssertEqual(note.tags, ["existing-tag"])
     }
 }
+#endif

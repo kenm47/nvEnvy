@@ -1,5 +1,6 @@
 import Foundation
 
+#if os(macOS)
 public final class FileSystemMonitor: @unchecked Sendable {
     private var stream: FSEventStreamRef?
     private let path: String
@@ -66,3 +67,4 @@ private func fsEventCallback(
     let wrapper = Unmanaged<CallbackWrapper>.fromOpaque(info).takeUnretainedValue()
     wrapper.callback()
 }
+#endif

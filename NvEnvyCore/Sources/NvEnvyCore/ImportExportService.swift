@@ -1,6 +1,8 @@
 import Foundation
 #if canImport(AppKit)
 import AppKit
+#elseif canImport(UIKit)
+import UIKit
 #endif
 #if canImport(PDFKit)
 import PDFKit
@@ -182,7 +184,7 @@ public actor ImportExportService {
         MarkdownRenderer.renderHTML(from: note.body, title: note.title)
     }
 
-    #if canImport(AppKit)
+    #if canImport(AppKit) || canImport(UIKit)
     public func exportAsRTF(_ note: Note) -> Data? {
         let attrStr = NSAttributedString(string: note.body)
         return try? attrStr.data(
@@ -401,8 +403,11 @@ public actor ImportExportService {
     // MARK: - RTF Conversion
 
     private static func convertRTFToPlainText(_ data: Data) -> String {
-        #if canImport(AppKit)
-        if let attrStr = NSAttributedString(rtf: data, documentAttributes: nil) {
+        #if canImport(AppKit) || canImport(UIKit)
+        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+            .documentType: NSAttributedString.DocumentType.rtf
+        ]
+        if let attrStr = try? NSAttributedString(data: data, options: options, documentAttributes: nil) {
             return attrStr.string
         }
         #endif
