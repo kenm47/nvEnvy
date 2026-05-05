@@ -9,7 +9,7 @@ struct RootSplitView: View {
             NoteListView()
         } detail: {
             if let id = notesVM.selectedNoteID, let note = notesVM.note(for: id) {
-                NoteReaderView(note: note)
+                NoteEditorView(note: note, notesVM: notesVM)
             } else {
                 ContentUnavailableView("No Note Selected", systemImage: "doc.text")
             }
