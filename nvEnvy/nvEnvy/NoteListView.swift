@@ -60,12 +60,16 @@ struct NoteListView: View {
                         .buttonStyle(.plain)
                     }
                     ForEach(sortedNotes) { note in
-                        if appState.noteListDisplayMode == .preview {
-                            NotePreviewRow(note: note, appState: appState)
-                                .tag(note.id)
-                        } else {
-                            NoteRow(note: note, appState: appState)
-                                .tag(note.id)
+                        Group {
+                            if appState.noteListDisplayMode == .preview {
+                                NotePreviewRow(note: note, appState: appState)
+                            } else {
+                                NoteRow(note: note, appState: appState)
+                            }
+                        }
+                        .tag(note.id)
+                        .contextMenu {
+                            rowContextMenu(for: note)
                         }
                     }
                 }
@@ -143,6 +147,26 @@ struct NoteListView: View {
         .fixedSize()
     }
 
+    // MARK: - Per-Row Context Menu
+
+    @ViewBuilder
+    private func rowContextMenu(for note: Note) -> some View {
+        Button("Rename") {
+            appState.inlineRenameNoteID = note.id
+        }
+        Button("Reveal in Finder") {
+            appState.revealInFinder(noteID: note.id)
+        }
+        Divider()
+        Button("Delete Note", role: .destructive) {
+            if appState.confirmDeletion {
+                NotificationCenter.default.post(name: .nvEnvyConfirmDeleteNote, object: note.id)
+            } else {
+                appState.deleteNote(noteID: note.id)
+            }
+        }
+    }
+
     // MARK: - Column Visibility Context Menu
 
     private var columnVisibilityMenu: some View {
@@ -201,9 +225,8 @@ struct NoteRow: View {
 
     var body: some View {
         HStack {
-            Text(note.title)
-                .font(.system(size: appState.tableFontSize))
-                .lineLimit(1)
+            InlineNoteTitle(note: note, appState: appState,
+                            font: .system(size: appState.tableFontSize))
             SyncStatusIcon(status: note.syncStatus)
             Spacer()
             Text(note.modifiedDate.formatted(date: .abbreviated, time: .shortened))
@@ -228,9 +251,8 @@ struct NotePreviewRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 4) {
-                Text(note.title)
-                    .font(.system(size: appState.tableFontSize).bold())
-                    .lineLimit(1)
+                InlineNoteTitle(note: note, appState: appState,
+                                font: .system(size: appState.tableFontSize).bold())
 
                 SyncStatusIcon(status: note.syncStatus)
             }
@@ -254,6 +276,61 @@ struct NotePreviewRow: View {
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(note.title), \(note.tags.isEmpty ? "" : "tags: \(note.tags.joined(separator: ", ")), ")modified \(note.modifiedDate.formatted(.relative(presentation: .named)))")
+    }
+}
+
+// MARK: - Inline Rename Title
+
+struct InlineNoteTitle: View {
+    let note: Note
+    let appState: AppState
+    let font: Font
+
+    @State private var draftTitle: String = ""
+    @FocusState private var isFocused: Bool
+
+    private var isEditing: Bool { appState.inlineRenameNoteID == note.id }
+
+    var body: some View {
+        Group {
+            if isEditing {
+                TextField("", text: $draftTitle)
+                    .textFieldStyle(.plain)
+                    .font(font)
+                    .focused($isFocused)
+                    .onSubmit { commit() }
+                    .onKeyPress(.escape) {
+                        cancel()
+                        return .handled
+                    }
+                    .onChange(of: isFocused) { _, focused in
+                        if !focused && isEditing { commit() }
+                    }
+            } else {
+                Text(note.title)
+                    .font(font)
+                    .lineLimit(1)
+            }
+        }
+        .onChange(of: isEditing, initial: true) { _, editing in
+            if editing {
+                draftTitle = note.title
+                DispatchQueue.main.async { isFocused = true }
+            }
+        }
+    }
+
+    private func commit() {
+        guard isEditing else { return }
+        let result = appState.tryRenameNote(noteID: note.id, newTitle: draftTitle)
+        if let error = result {
+            appState.inlineRenameError = error
+        }
+        appState.inlineRenameNoteID = nil
+    }
+
+    private func cancel() {
+        appState.inlineRenameNoteID = nil
     }
 }
 

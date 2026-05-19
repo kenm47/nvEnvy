@@ -28,6 +28,17 @@ struct ContentView: View {
                     .environment(appState)
             }
         }
+        .alert(
+            String(localized: "Cannot Rename Note"),
+            isPresented: Binding(
+                get: { appState.inlineRenameError != nil },
+                set: { if !$0 { appState.inlineRenameError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(appState.inlineRenameError ?? "")
+        }
         .alert(String(localized: "Delete Note?"), isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 if let id = noteToDelete {

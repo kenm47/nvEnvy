@@ -349,6 +349,13 @@ public final class AppState {
         set { notes.isRenaming = newValue }
     }
 
+    // MARK: - Inline (per-row) rename UI state
+
+    /// When non-nil, the note list row with this id renders in inline-edit mode.
+    public var inlineRenameNoteID: Note.ID?
+    /// Non-nil triggers a presentation-time alert from the rename validator.
+    public var inlineRenameError: String?
+
     public init() {
         let savedName = UserDefaults.standard.string(forKey: kEditorFontNameKey)
         let savedSize = UserDefaults.standard.double(forKey: kEditorFontSizeKey)
@@ -539,6 +546,9 @@ public final class AppState {
         notes.updateNoteTags(noteID: noteID, tags: tags)
     }
     public func deleteNote(noteID: UUID) { notes.deleteNote(noteID: noteID) }
+    public func tryRenameNote(noteID: UUID, newTitle: String) -> String? {
+        notes.tryRenameNote(noteID: noteID, newTitle: newTitle)
+    }
     public func renameNote(noteID: UUID, newTitle: String) {
         notes.renameNote(noteID: noteID, newTitle: newTitle)
     }

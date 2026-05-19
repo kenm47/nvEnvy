@@ -34,9 +34,7 @@ struct MainView: View {
                 SearchField(
                     query: $appState.searchQuery,
                     onReturn: {
-                        if appState.isRenaming {
-                            appState.commitRename()
-                        } else if !appState.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        if !appState.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             appState.createOrSelectNote()
                         }
                         DispatchQueue.main.async {
@@ -44,12 +42,7 @@ struct MainView: View {
                         }
                     },
                     onEscape: {
-                        if appState.isRenaming {
-                            appState.isRenaming = false
-                            appState.searchQuery = ""
-                        } else {
-                            appState.clearSearch()
-                        }
+                        appState.clearSearch()
                     },
                     onDownArrow: {
                         appState.selectNextNote()
@@ -191,9 +184,13 @@ struct KeyboardShortcutHandlers: View {
             // ⌘⇧C — collapse/expand note list
             Button("") { appState.noteListCollapsed.toggle() }
                 .keyboardShortcut("c", modifiers: [.command, .shift])
-            // ⌘R — rename note
-            Button("") { appState.startRename() }
-                .keyboardShortcut("r", modifiers: .command)
+            // ⌘R — inline rename selected note
+            Button("") {
+                if let id = appState.selectedNoteID {
+                    appState.inlineRenameNoteID = id
+                }
+            }
+            .keyboardShortcut("r", modifiers: .command)
         }
         .frame(width: 0, height: 0)
         .opacity(0)

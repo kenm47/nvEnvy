@@ -252,13 +252,16 @@ public final class NotesViewModel {
     }
 
     public func deleteNote(noteID: UUID) {
+        // Optimistic UI: remove from memory + clear selection synchronously
+        // so the row disappears immediately. The on-disk delete (which may be
+        // slow under iCloud sync) runs in the background.
+        allNotes.removeAll { $0.id == noteID }
+        if selectedNoteID == noteID {
+            selectedNoteID = nil
+        }
+        performSearch()
         Task {
             try? await noteStore?.deleteNote(noteID: noteID)
-            allNotes.removeAll { $0.id == noteID }
-            if selectedNoteID == noteID {
-                selectedNoteID = nil
-            }
-            performSearch()
         }
     }
 
@@ -271,6 +274,29 @@ public final class NotesViewModel {
             }
             performSearch()
         }
+    }
+
+    /// Validating rename. Returns `nil` on success, or a user-facing error
+    /// string on validation failure (empty title or filename collision with
+    /// another existing note).
+    public func tryRenameNote(noteID: UUID, newTitle: String) -> String? {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return String(localized: "Title cannot be empty.")
+        }
+        guard let target = note(for: noteID) else { return nil }
+        if target.title == trimmed { return nil }
+
+        let newFilename = Note.sanitizedFilename(from: trimmed)
+        let lowerNewFilename = newFilename.lowercased()
+        let collides = allNotes.contains { other in
+            other.id != noteID && other.filename.lowercased() == lowerNewFilename
+        }
+        if collides {
+            return String(localized: "A note named “\(trimmed)” already exists.")
+        }
+        renameNote(noteID: noteID, newTitle: trimmed)
+        return nil
     }
 
     public func startRename() {

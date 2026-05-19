@@ -8,6 +8,7 @@ public enum SyncStatus: Int, Sendable {
     case conflict = 4
 }
 
+@Observable
 public final class Note: Identifiable, @unchecked Sendable {
     public let id: UUID
     public var title: String
@@ -16,16 +17,16 @@ public final class Note: Identifiable, @unchecked Sendable {
     public var filename: String
     public var createdDate: Date
     public var modifiedDate: Date
-    public var fileModifiedDate: Date?
-    public var fileSize: UInt64?
-    public var fileEncoding: String.Encoding
-    public var selectedRange: NSRange?
+    @ObservationIgnored public var fileModifiedDate: Date?
+    @ObservationIgnored public var fileSize: UInt64?
+    @ObservationIgnored public var fileEncoding: String.Encoding
+    @ObservationIgnored public var selectedRange: NSRange?
     public var syncStatus: SyncStatus = .local
 
-    // Search optimization: cached lowercase strings
-    public var cachedLowercaseTitle: String
-    public var cachedLowercaseBody: String
-    public var cachedLowercaseTags: String
+    // Search optimization: cached lowercase strings (not displayed; not observed)
+    @ObservationIgnored public var cachedLowercaseTitle: String
+    @ObservationIgnored public var cachedLowercaseBody: String
+    @ObservationIgnored public var cachedLowercaseTags: String
 
     public init(
         id: UUID = UUID(),
