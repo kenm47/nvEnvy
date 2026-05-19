@@ -6,6 +6,21 @@ struct NoteListView: View {
     @Environment(AppState.self) private var appState
     @Binding var selectedNoteID: Note.ID?
 
+    private var trimmedQuery: String {
+        appState.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasExactTitleMatch: Bool {
+        let q = trimmedQuery
+        guard !q.isEmpty else { return true }
+        let lower = q.lowercased()
+        return sortedNotes.contains { $0.title.lowercased() == lower }
+    }
+
+    private var showCreateRow: Bool {
+        !trimmedQuery.isEmpty && !hasExactTitleMatch
+    }
+
     var body: some View {
         @Bindable var appState = appState
         VStack(spacing: 0) {
@@ -31,6 +46,19 @@ struct NoteListView: View {
                 .frame(maxWidth: .infinity)
             } else {
                 List(selection: $selectedNoteID) {
+                    if showCreateRow {
+                        Button {
+                            appState.createOrSelectNote()
+                        } label: {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundStyle(.tint)
+                                Text("Create \"\(trimmedQuery)\"")
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
                     ForEach(sortedNotes) { note in
                         if appState.noteListDisplayMode == .preview {
                             NotePreviewRow(note: note, appState: appState)

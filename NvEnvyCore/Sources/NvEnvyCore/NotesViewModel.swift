@@ -161,15 +161,15 @@ public final class NotesViewModel {
     }
 
     public func createOrSelectNote() {
-        guard !searchQuery.isEmpty else { return }
+        let title = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
 
-        if let match = searchEngine.exactTitleMatch(notes: allNotes, query: searchQuery) {
+        if let match = searchEngine.exactTitleMatch(notes: allNotes, query: title) {
             filteredNotes = [match]
             selectedNoteID = match.id
             return
         }
 
-        let title = searchQuery
         Task {
             guard let store = noteStore else { return }
             let note = try await store.createNote(title: title)
