@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  core-tests:
+    name: NvEnvyCore unit tests
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Swift version
+        run: swift --version
+      - name: Run tests
+        working-directory: NvEnvyCore
+        run: swift test --parallel
+
+  app-build:
+    name: nvEnvy app build
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: nvEnvy
+        run: xcodegen generate
+      - name: Build nvEnvy (direct-download / Sparkle)
+        working-directory: nvEnvy
+        run: |
+          xcodebuild \
+            -project nvEnvy.xcodeproj \
+            -scheme nvEnvy \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+      - name: Build nvEnvy-MAS (App Store, no Sparkle)
+        working-directory: nvEnvy
+        run: |
+          xcodebuild \
+            -project nvEnvy.xcodeproj \
+            -scheme nvEnvy-MAS \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build

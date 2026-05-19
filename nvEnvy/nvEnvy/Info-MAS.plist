@@ -111,6 +111,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSAppleScriptEnabled</key>
 	<true/>
 	<key>NSServices</key>
@@ -135,7 +137,5 @@
 	</array>
 	<key>OSAScriptingDefinition</key>
 	<string>nvEnvy.sdef</string>
-	<key>SUFeedURL</key>
-	<string>https://nvenvy.io/appcast.xml</string>
 </dict>
 </plist>

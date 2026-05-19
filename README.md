@@ -21,7 +21,7 @@ A fast, keyboard-driven note-taking app for macOS. A modern rebuild of nvALT bui
 - **URL schemes** — `nvenvy://find/title` and `nvenvy://make?title=...&body=...` for automation.
 - **AppleScript & Shortcuts** — Full scripting support via `.sdef` and App Intents.
 - **Services menu** — Create notes from selected text in any app.
-- **Auto-update** — Sparkle integration for seamless updates.
+- **Auto-update** — Sparkle integration for direct-download (DMG) builds; the Mac App Store build receives updates via the App Store.
 - **Localized** — English, German, French, Italian, Portuguese (BR), Chinese (Simplified).
 
 ## Keyboard Shortcuts
@@ -102,4 +102,4 @@ See [RELEASING.md](RELEASING.md) for archive, code signing, notarization, and DM
 
 ## License
 
-<!-- TODO: Add license -->
+nvEnvy is released under the [MIT License](LICENSE). You are free to use, modify, and redistribute the source code under the terms of that license. The signed binaries distributed via the Mac App Store and from [nvenvy.io](https://nvenvy.io) are provided as a convenience and are subject to the App Store's own terms.

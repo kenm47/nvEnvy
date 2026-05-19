@@ -17,10 +17,43 @@ packages:
     url: https://github.com/sparkle-project/Sparkle
     from: "2.5.0"
 
-targets:
-  nvEnvy:
+targetTemplates:
+  nvEnvyMacBase:
     type: application
     platform: macOS
+    sources:
+      - path: nvEnvy
+        excludes:
+          - "Fonts"
+      - path: nvEnvy/Fonts
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nvenvy.app
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.productivity"
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 nvEnvy. All rights reserved."
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        CODE_SIGN_ENTITLEMENTS: nvEnvy/nvEnvy.entitlements
+        ARCHS: "$(ARCHS_STANDARD)"
+        ENABLE_HARDENED_RUNTIME: YES
+        GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+    entitlements:
+      path: nvEnvy/nvEnvy.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.files.bookmarks.app-scope: true
+        com.apple.security.network.client: true
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)com.nvenvy.app
+
+targets:
+  nvEnvy:
+    templates: [nvEnvyMacBase]
     info:
       path: nvEnvy/Info.plist
       properties:
@@ -28,7 +61,7 @@ targets:
         ATSApplicationFontsPath: Fonts
         CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
-        SUFeedURL: "https://nvenvy.com/appcast.xml"
+        SUFeedURL: "https://nvenvy.io/appcast.xml"
         NSAppleScriptEnabled: true
         OSAScriptingDefinition: nvEnvy.sdef
         NSServices:
@@ -78,39 +111,79 @@ targets:
               - webarchive
             CFBundleTypeRole: Viewer
             LSHandlerRank: None
-    sources:
-      - path: nvEnvy
-        excludes:
-          - "Fonts"
-      - path: nvEnvy/Fonts
-        type: folder
-        buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.nvenvy.app
-        MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "1"
-        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.productivity"
-        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 nvEnvy. All rights reserved."
-        SWIFT_VERSION: "5.9"
-        MACOSX_DEPLOYMENT_TARGET: "14.0"
-        CODE_SIGN_ENTITLEMENTS: nvEnvy/nvEnvy.entitlements
-        ARCHS: "$(ARCHS_STANDARD)"
-        ENABLE_HARDENED_RUNTIME: YES
-        GENERATE_INFOPLIST_FILE: YES
-        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: SPARKLE_ENABLED
     dependencies:
       - package: NvEnvyCore
       - package: KeyboardShortcuts
       - package: Sparkle
-    entitlements:
-      path: nvEnvy/nvEnvy.entitlements
+
+  nvEnvy-MAS:
+    templates: [nvEnvyMacBase]
+    settings:
+      base:
+        PRODUCT_NAME: nvEnvy
+    info:
+      path: nvEnvy/Info-MAS.plist
       properties:
-        com.apple.security.app-sandbox: true
-        com.apple.security.files.user-selected.read-write: true
-        com.apple.security.files.bookmarks.app-scope: true
-        com.apple.security.network.client: true
-        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)com.nvenvy.app
+        CFBundleIconFile: AppIcon
+        ATSApplicationFontsPath: Fonts
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        ITSAppUsesNonExemptEncryption: false
+        NSAppleScriptEnabled: true
+        OSAScriptingDefinition: nvEnvy.sdef
+        NSServices:
+          - NSMenuItem:
+              default: "nvEnvy: New Note from Selection"
+            NSMessage: createFromSelection
+            NSPortName: nvEnvy
+            NSSendTypes:
+              - public.utf8-plain-text
+              - public.rtf
+              - public.html
+        CFBundleURLTypes:
+          - CFBundleURLName: nvEnvy URL Scheme
+            CFBundleURLSchemes:
+              - nvenvy
+              - nv
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Markdown
+            CFBundleTypeExtensions:
+              - md
+              - markdown
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+          - CFBundleTypeName: Plain Text
+            CFBundleTypeExtensions:
+              - txt
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+          - CFBundleTypeName: Rich Text
+            CFBundleTypeExtensions:
+              - rtf
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: None
+          - CFBundleTypeName: HTML
+            CFBundleTypeExtensions:
+              - html
+              - htm
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: None
+          - CFBundleTypeName: RTFD
+            CFBundleTypeExtensions:
+              - rtfd
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: None
+          - CFBundleTypeName: Web Archive
+            CFBundleTypeExtensions:
+              - webarchive
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: None
+    dependencies:
+      - package: NvEnvyCore
+      - package: KeyboardShortcuts
 
   nvEnvyiOS:
     type: application
