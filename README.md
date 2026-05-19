@@ -4,7 +4,9 @@ A fast, keyboard-driven note-taking app for macOS. A modern rebuild of nvALT bui
 
 ## Screenshots
 
-<!-- TODO: Add screenshots -->
+| Horizontal layout | Vertical layout |
+|---|---|
+| ![nvEnvy with the note list and tags pane side-by-side](docs/screenshots/horizontal-layout.png) | ![nvEnvy with the note list stacked above the tags pane](docs/screenshots/vertical-layout.png) |
 
 ## Features
 
