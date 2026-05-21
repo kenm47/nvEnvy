@@ -38,6 +38,12 @@ struct nvEnvyApp: App {
         }
         .defaultSize(width: 600, height: 500)
 
+        Window("About nvEnvy", id: "about") {
+            AboutView()
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+
         Settings {
             PreferencesView()
                 .environment(appState)
@@ -53,7 +59,15 @@ struct nvEnvyCommands: Commands {
     let updater: SPUUpdater?
     #endif
 
+    @Environment(\.openWindow) private var openWindow
+
     var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button("About nvEnvy") {
+                openWindow(id: "about")
+            }
+        }
+
         #if SPARKLE_ENABLED
         CommandGroup(after: .appInfo) {
             Button("Check for Updates...") {

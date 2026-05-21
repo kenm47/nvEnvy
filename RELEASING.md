@@ -70,7 +70,7 @@ create-dmg \
 
 ## Sparkle Auto-Update
 
-The direct-download (DMG) build of nvEnvy includes Sparkle for auto-updates. The appcast URL is configured as `https://nvenvy.io/appcast.xml` in Info.plist (`SUFeedURL`). The Mac App Store build (scheme `nvEnvy-MAS`) excludes Sparkle entirely; MAS updates flow through the App Store.
+The direct-download (DMG) build of nvEnvy includes Sparkle for auto-updates. The appcast URL is configured as `https://nvenvy.app/appcast.xml` in Info.plist (`SUFeedURL`). The Mac App Store build (scheme `nvEnvy-MAS`) excludes Sparkle entirely; MAS updates flow through the App Store.
 
 To publish an update:
 1. Build and sign the new version

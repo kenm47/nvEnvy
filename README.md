@@ -102,6 +102,20 @@ NvEnvyCore/       — Swift Package (platform-agnostic data layer)
 
 See [RELEASING.md](RELEASING.md) for archive, code signing, notarization, and DMG creation instructions.
 
+## Privacy
+
+nvEnvy collects nothing. Notes stay on your Mac (and in your iCloud Drive, if you put them there). See [PRIVACY.md](PRIVACY.md) for the full policy.
+
+## Acknowledgments
+
+- Descended from [Notational Velocity](http://notational.net) by Zachary Schneirov (via Brett Terpstra's [nvALT](https://brettterpstra.com/projects/nvalt/) fork).
+- [Sparkle](https://sparkle-project.org) — auto-update framework (direct-download builds only).
+- [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus — user-configurable global hotkeys.
+- [Yams](https://github.com/jpsim/Yams) — YAML parsing for frontmatter.
+- [swift-markdown](https://github.com/apple/swift-markdown) — Apple's Markdown parser.
+
+Made by Kendall from [lunt.co](https://lunt.co).
+
 ## License
 
-nvEnvy is released under the [MIT License](LICENSE). You are free to use, modify, and redistribute the source code under the terms of that license. The signed binaries distributed via the Mac App Store and from [nvenvy.io](https://nvenvy.io) are provided as a convenience and are subject to the App Store's own terms.
+nvEnvy is released under the [MIT License](LICENSE). You are free to use, modify, and redistribute the source code under the terms of that license. The signed binaries distributed via the Mac App Store and from [nvenvy.app](https://nvenvy.app) are provided as a convenience and are subject to the App Store's own terms.
