@@ -128,17 +128,19 @@ struct NoteListView: View {
                     }
                 } label: {
                     HStack {
-                        Text(field.displayName)
                         if appState.sortField == field {
-                            Image(systemName: appState.sortAscending ? "chevron.up" : "chevron.down")
+                            Image(systemName: appState.sortAscending ? "arrow.up" : "arrow.down")
                         }
+                        Text(field.displayName)
                     }
                 }
             }
         } label: {
-            HStack(spacing: 2) {
+            HStack(spacing: 4) {
+                Image(systemName: appState.sortAscending ? "arrow.up" : "arrow.down")
                 Text(appState.sortField.displayName)
-                Image(systemName: appState.sortAscending ? "chevron.up" : "chevron.down")
+                Image(systemName: "chevron.down")
+                    .font(.caption2)
             }
             .font(.caption)
             .foregroundStyle(.secondary)
