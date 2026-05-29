@@ -8,6 +8,14 @@ A fast, keyboard-driven note-taking app for macOS. A modern rebuild of nvALT bui
 |---|---|
 | ![nvEnvy with the note list and tags pane side-by-side](docs/screenshots/horizontal-layout.png) | ![nvEnvy with the note list stacked above the tags pane](docs/screenshots/vertical-layout.png) |
 
+## Install
+
+- **Mac App Store** — [Get nvEnvy on the Mac App Store](https://apps.apple.com/us/app/nvenvy/id6771612661).
+- **Direct download (DMG)** — Notarized, hardened-runtime build with Sparkle auto-update, available from [GitHub Releases](https://github.com/kenm47/nvEnvy/releases).
+- **Build from source** — See [Build Instructions](#build-instructions) below.
+
+Requires macOS 14 Sonoma or later. Universal (Apple Silicon + Intel).
+
 ## Features
 
 - **Instant search** — Type to search, Return to create. Incremental filtering with phrase search support.
