@@ -68,9 +68,92 @@ public actor FileStorageService {
 
     public var allowedExtensions: Set<String>
 
-    public func readAllNotes() throws -> [Note] {
-        var results: [Note] = []
+    private var basePrefix: String {
+        let basePath = notesDirectory.resolvingSymlinksInPath().path
+        return basePath.hasSuffix("/") ? basePath : basePath + "/"
+    }
 
+    /// Relative "filename" (no extension) nvEnvy uses as a note's stable key,
+    /// derived from an absolute file URL. Pure path arithmetic — doesn't touch disk.
+    /// `static` (not actor-isolated) so it can run concurrently from parallel load tasks.
+    private static func relativeFilename(for url: URL, basePrefix: String) -> String {
+        let filePath = url.path
+        let relativePath: String
+        if filePath.hasPrefix(basePrefix) {
+            relativePath = String(filePath.dropFirst(basePrefix.count))
+        } else {
+            // Fallback: resolve this one URL if prefix doesn't match
+            let resolved = url.resolvingSymlinksInPath().path
+            if resolved.hasPrefix(basePrefix) {
+                relativePath = String(resolved.dropFirst(basePrefix.count))
+            } else {
+                relativePath = url.lastPathComponent
+            }
+        }
+        let ext = url.pathExtension
+        return String(relativePath.dropLast(ext.count + 1)) // remove .ext
+    }
+
+    /// Filename key for an absolute path, without touching disk. Returns nil if
+    /// the path's extension isn't one nvEnvy reads. Used to map raw FSEvents
+    /// paths (which may point at now-deleted files) back to a note key.
+    public func filename(forPath path: String) -> String? {
+        let url = URL(fileURLWithPath: path)
+        guard allowedExtensions.contains(url.pathExtension.lowercased()) else { return nil }
+        return Self.relativeFilename(for: url, basePrefix: basePrefix)
+    }
+
+    public func fileExists(at url: URL) -> Bool {
+        fileManager.fileExists(atPath: url.path)
+    }
+
+    public func statFile(at url: URL) -> (modDate: Date, size: UInt64)? {
+        guard let rv = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey]),
+              let modDate = rv.contentModificationDate,
+              let size = rv.fileSize else { return nil }
+        return (modDate, UInt64(size))
+    }
+
+    /// Reads and parses a single note file. `static`/non-isolated (takes its
+    /// inputs as plain values) so it can run concurrently across `Task`s
+    /// without hopping back onto the `FileStorageService` actor per file.
+    /// Shared by the full-vault scan (`readAllNotes`) and the incremental
+    /// FSEvents reconciliation path so the two never drift.
+    private static func parseNoteFile(at url: URL, allowedExtensions: Set<String>, basePrefix: String) -> Note? {
+        guard allowedExtensions.contains(url.pathExtension.lowercased()) else { return nil }
+        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { return nil }
+        let (content, encoding) = Self.decodeWithFallback(data)
+        guard let content else { return nil }
+
+        let parsed = FrontmatterParser.parse(content)
+        let filename = relativeFilename(for: url, basePrefix: basePrefix)
+        let title = url.deletingPathExtension().lastPathComponent
+        let resourceValues = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+        let modDate = resourceValues?.contentModificationDate ?? Date()
+        let fileSize = resourceValues?.fileSize.map { UInt64($0) }
+
+        let note = Note(
+            title: title,
+            body: parsed.body,
+            tags: parsed.frontmatter?.tags ?? [],
+            filename: filename,
+            createdDate: parsed.frontmatter?.created ?? modDate,
+            modifiedDate: parsed.frontmatter?.modified ?? modDate
+        )
+        note.fileModifiedDate = modDate
+        note.fileSize = fileSize
+        note.fileEncoding = encoding
+        return note
+    }
+
+    /// Reads and parses a single note by absolute file URL, for incremental
+    /// reconciliation of one changed path. Returns nil for directories,
+    /// disallowed extensions, or unreadable files.
+    public func loadSingleNote(at url: URL) -> Note? {
+        Self.parseNoteFile(at: url, allowedExtensions: allowedExtensions, basePrefix: basePrefix)
+    }
+
+    public func readAllNotes() async throws -> [Note] {
         guard let enumerator = fileManager.enumerator(
             at: notesDirectory,
             includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey, .isDirectoryKey],
@@ -78,8 +161,7 @@ public actor FileStorageService {
         ) else { return [] }
 
         let ignoredDirs: Set<String> = [".obsidian"]
-        let basePath = notesDirectory.resolvingSymlinksInPath().path
-        let basePrefix = basePath.hasSuffix("/") ? basePath : basePath + "/"
+        var urls: [URL] = []
 
         while let url = enumerator.nextObject() as? URL {
             if let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory, isDir {
@@ -89,51 +171,35 @@ public actor FileStorageService {
                 }
                 continue
             }
-
             guard allowedExtensions.contains(url.pathExtension.lowercased()) else { continue }
-            guard let data = try? Data(contentsOf: url) else { continue }
-            let (content, encoding) = Self.decodeWithFallback(data)
-            guard let content else { continue }
-
-            let parsed = FrontmatterParser.parse(content)
-
-            // Compute relative path using string prefix (no per-file symlink resolution)
-            let filePath = url.path
-            let relativePath: String
-            if filePath.hasPrefix(basePrefix) {
-                relativePath = String(filePath.dropFirst(basePrefix.count))
-            } else {
-                // Fallback: resolve this one URL if prefix doesn't match
-                let resolved = url.resolvingSymlinksInPath().path
-                if resolved.hasPrefix(basePrefix) {
-                    relativePath = String(resolved.dropFirst(basePrefix.count))
-                } else {
-                    relativePath = url.lastPathComponent
-                }
-            }
-
-            let ext = url.pathExtension
-            let filename = String(relativePath.dropLast(ext.count + 1)) // remove .ext
-            let title = url.deletingPathExtension().lastPathComponent
-            let resourceValues = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
-            let modDate = resourceValues?.contentModificationDate ?? Date()
-            let fileSize = resourceValues?.fileSize.map { UInt64($0) }
-
-            let note = Note(
-                title: title,
-                body: parsed.body,
-                tags: parsed.frontmatter?.tags ?? [],
-                filename: filename,
-                createdDate: parsed.frontmatter?.created ?? modDate,
-                modifiedDate: parsed.frontmatter?.modified ?? modDate
-            )
-            note.fileModifiedDate = modDate
-            note.fileSize = fileSize
-            note.fileEncoding = encoding
-            results.append(note)
+            urls.append(url)
         }
 
-        return results
+        guard !urls.isEmpty else { return [] }
+
+        // Enumeration must stay serial (NSDirectoryEnumerator isn't concurrency-safe),
+        // but per-file read/decode/parse is pure and independent, so fan it out.
+        let exts = allowedExtensions
+        let prefix = basePrefix
+        let chunkCount = max(1, min(urls.count, ProcessInfo.processInfo.activeProcessorCount))
+        let chunkSize = max(1, (urls.count + chunkCount - 1) / chunkCount)
+        let chunks = stride(from: 0, to: urls.count, by: chunkSize).map {
+            Array(urls[$0..<min($0 + chunkSize, urls.count)])
+        }
+
+        return await withTaskGroup(of: [Note].self) { group in
+            for chunk in chunks {
+                group.addTask {
+                    chunk.compactMap { Self.parseNoteFile(at: $0, allowedExtensions: exts, basePrefix: prefix) }
+                }
+            }
+            var all: [Note] = []
+            all.reserveCapacity(urls.count)
+            for await partial in group {
+                all.append(contentsOf: partial)
+            }
+            return all
+        }
     }
 
     // MARK: - Write
@@ -196,8 +262,36 @@ public actor FileStorageService {
         }
         let tempURL = url.deletingLastPathComponent()
             .appendingPathComponent(".\(UUID().uuidString).tmp")
-        try data.write(to: tempURL, options: .atomic)
+        // No `.atomic` here: `replaceItemAt` below is already the atomicity
+        // boundary, so `.atomic` on the temp file would just add a second
+        // temp-write-and-rename for no benefit.
+        try data.write(to: tempURL)
         _ = try fileManager.replaceItemAt(url, withItemAt: tempURL)
+        recordSelfWrite(at: url)
+    }
+
+    // MARK: - Self-write suppression
+
+    /// Stat recorded immediately after nvEnvy writes a file itself, keyed by
+    /// path. Lets the FSEvents reconciliation path recognize "this event is our
+    /// own autosave" and skip re-reading/re-parsing a file we just wrote.
+    private var lastWrittenStat: [String: (modDate: Date, size: UInt64)] = [:]
+
+    private func recordSelfWrite(at url: URL) {
+        guard let stat = statFile(at: url) else { return }
+        lastWrittenStat[url.path] = stat
+    }
+
+    /// True if the file at `path` currently matches the stat nvEnvy recorded
+    /// for its own most recent write to that path. Consumes (clears) the
+    /// recorded stat on a match, so a genuine subsequent external edit isn't
+    /// silently ignored.
+    public func wasSelfWrite(path: String) -> Bool {
+        guard let recorded = lastWrittenStat[path] else { return false }
+        guard let current = statFile(at: URL(fileURLWithPath: path)) else { return false }
+        guard current.modDate == recorded.modDate, current.size == recorded.size else { return false }
+        lastWrittenStat.removeValue(forKey: path)
+        return true
     }
 }
 

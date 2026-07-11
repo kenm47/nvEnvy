@@ -25,6 +25,8 @@ targetTemplates:
       - path: nvEnvy
         excludes:
           - "Fonts"
+          - "Info.plist"
+          - "Info-MAS.plist"
       - path: nvEnvy/Fonts
         type: folder
         buildPhase: resources
@@ -229,3 +231,32 @@ targets:
         INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.productivity"
     dependencies:
       - package: NvEnvyCore
+
+schemes:
+  "nvEnvy (App Store)":
+    build:
+      targets:
+        nvEnvy-MAS: all
+    run:
+      config: Release
+      executable: nvEnvy-MAS
+    archive:
+      config: Release
+  "nvEnvy (Direct Download)":
+    build:
+      targets:
+        nvEnvy: all
+    run:
+      config: Release
+      executable: nvEnvy
+    archive:
+      config: Release
+  nvEnvyiOS:
+    build:
+      targets:
+        nvEnvyiOS: all
+    run:
+      config: Debug
+      executable: nvEnvyiOS
+    archive:
+      config: Release

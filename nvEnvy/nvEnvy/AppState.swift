@@ -313,6 +313,7 @@ public final class AppState {
         set { notes.filteredNotes = newValue }
     }
     public var sortedNotes: [Note] { notes.sortedNotes }
+    public var showCreateRow: Bool { notes.showCreateRow }
     public var selectedNoteID: Note.ID? {
         get { notes.selectedNoteID }
         set { notes.selectedNoteID = newValue }
@@ -522,9 +523,13 @@ public final class AppState {
 
     private func setupMonitors(url: URL) {
         fileMonitor?.stop()
-        fileMonitor = FileSystemMonitor(directory: url) { [weak self] in
+        fileMonitor = FileSystemMonitor(directory: url) { [weak self] paths, flags in
             Task { @MainActor [weak self] in
-                await self?.notes.reconcileFilesystem()
+                if fsEventFlagsRequireFullRescan(flags) {
+                    await self?.notes.reconcileFilesystem()
+                } else {
+                    await self?.notes.reconcileFilesystem(changedPaths: paths)
+                }
             }
         }
         fileMonitor?.start()
@@ -571,6 +576,9 @@ public final class AppState {
     }
     public func updateSyncStatus(filename: String, status: SyncStatus) {
         notes.updateSyncStatus(filename: filename, status: status)
+    }
+    public func updateSyncStatuses(_ statuses: [String: SyncStatus]) {
+        notes.updateSyncStatuses(statuses)
     }
     public func createNoteFromIntent(title: String, body: String, tags: [String]) {
         notes.createNoteFromIntent(title: title, body: body, tags: tags)

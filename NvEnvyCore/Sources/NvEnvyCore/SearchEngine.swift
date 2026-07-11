@@ -1,5 +1,20 @@
 import Foundation
 
+/// Serializes search filtering off the main actor. Owns the `SearchEngine`
+/// (and thus its incremental-search state) so heavy `filter` calls run on a
+/// background executor instead of blocking the UI. Stateless lookups
+/// (`SearchEngine.exactTitleMatch` / `autocompleteTitlePrefix`) stay static and
+/// are called directly from the main actor.
+public actor SearchActor {
+    private var engine = SearchEngine()
+
+    public init() {}
+
+    public func filter(notes: [Note], query: String) -> [Note] {
+        engine.filter(notes: notes, query: query)
+    }
+}
+
 public struct SearchEngine: Sendable {
     private var previousQuery: String = ""
     private var previousResults: [Note] = []
@@ -51,12 +66,15 @@ public struct SearchEngine: Sendable {
         return sorted
     }
 
-    public func exactTitleMatch(notes: [Note], query: String) -> Note? {
+    /// Stateless exact-title lookup. Does not use the incremental search state,
+    /// so it is `static` and safe to call synchronously off the search actor.
+    public static func exactTitleMatch(notes: [Note], query: String) -> Note? {
         let lowerQuery = query.lowercased()
         return notes.first { $0.cachedLowercaseTitle == lowerQuery }
     }
 
-    public func autocompleteTitlePrefix(notes: [Note], query: String) -> Note? {
+    /// Stateless title-prefix lookup. See `exactTitleMatch`.
+    public static func autocompleteTitlePrefix(notes: [Note], query: String) -> Note? {
         guard !query.isEmpty else { return nil }
         let lowerQuery = query.lowercased()
         return notes.first { $0.cachedLowercaseTitle.hasPrefix(lowerQuery) }

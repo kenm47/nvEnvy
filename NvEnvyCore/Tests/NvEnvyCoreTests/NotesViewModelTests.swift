@@ -138,6 +138,71 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertEqual(vm.selectedNoteID, bar.id)
     }
 
+    // MARK: - Debounced / off-main search
+
+    func testSearch_isDebounced_thenAppliesFilteredResults() async throws {
+        let apple = Note(title: "apple")
+        let banana = Note(title: "banana")
+        seedAllNotes([apple, banana])
+
+        vm.searchQuery = "apple"
+        // Synchronously after assigning the query the debounce has not fired,
+        // so the list is still unfiltered.
+        XCTAssertEqual(vm.filteredNotes.count, 2)
+
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(vm.filteredNotes.map(\.title), ["apple"])
+    }
+
+    func testSearch_rapidQueryChanges_settleOnFinalQuery() async throws {
+        let alpha = Note(title: "alpha")
+        let abacus = Note(title: "abacus")
+        seedAllNotes([alpha, abacus])
+
+        // Rapid changes: only the final query's results must remain.
+        vm.searchQuery = "z"
+        vm.searchQuery = "ab"
+        vm.searchQuery = "alpha"
+
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(vm.filteredNotes.map(\.title), ["alpha"])
+    }
+
+    func testClearSearch_restoresAllNotes() async throws {
+        let apple = Note(title: "apple")
+        let banana = Note(title: "banana")
+        seedAllNotes([apple, banana])
+
+        vm.searchQuery = "apple"
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(vm.filteredNotes.count, 1)
+
+        vm.clearSearch()
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(vm.filteredNotes.count, 2)
+    }
+
+    // MARK: - showCreateRow
+
+    func testShowCreateRow_emptyQuery_false() {
+        seedAllNotes([Note(title: "Existing")])
+        XCTAssertFalse(vm.showCreateRow)
+    }
+
+    func testShowCreateRow_novelQuery_true() async throws {
+        seedAllNotes([Note(title: "Existing")])
+        vm.searchQuery = "Brand New"
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertTrue(vm.showCreateRow)
+    }
+
+    func testShowCreateRow_exactMatch_false() async throws {
+        seedAllNotes([Note(title: "Meeting Notes")])
+        vm.searchQuery = "meeting notes"
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertFalse(vm.showCreateRow)
+    }
+
     // MARK: - Helpers
 
     private func seedAllNotes(_ notes: [Note]) {
