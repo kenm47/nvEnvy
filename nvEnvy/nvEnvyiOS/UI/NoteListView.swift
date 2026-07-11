@@ -4,17 +4,9 @@ import NvEnvyCore
 struct NoteListView: View {
     @Environment(NotesViewModel.self) private var notesVM
 
-    private var hasExactTitleMatch: Bool {
-        let q = notesVM.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return true }
-        let lower = q.lowercased()
-        return notesVM.sortedNotes.contains { $0.title.lowercased() == lower }
-    }
-
-    private var showCreateRow: Bool {
-        let q = notesVM.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !q.isEmpty && !hasExactTitleMatch
-    }
+    // "Create <query>" row visibility is precomputed in the view model so this
+    // body doesn't re-scan every title on each render.
+    private var showCreateRow: Bool { notesVM.showCreateRow }
 
     var body: some View {
         @Bindable var vm = notesVM

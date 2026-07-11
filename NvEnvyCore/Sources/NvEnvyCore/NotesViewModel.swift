@@ -25,9 +25,16 @@ public final class NotesViewModel {
     }
     public var sortedNotes: [Note] = []
 
+    /// Whether the list should show a "Create <query>" row: true when the
+    /// trimmed search query is non-empty and no existing note has that exact
+    /// title. Precomputed in `rebuildSortedNotes()` so the view body doesn't
+    /// re-scan every title (with per-title lowercasing) on each render.
+    public private(set) var showCreateRow: Bool = false
+
     public var selectedNoteID: Note.ID?
 
     private var notesByID: [UUID: Note] = [:]
+    private var notesByFilename: [String: Note] = [:]
     private var _cachedKnownTags: [String]?
 
     public var allKnownTags: [String] {
@@ -44,7 +51,7 @@ public final class NotesViewModel {
 
     private var noteStore: NoteStore?
     private var storageService: FileStorageService?
-    private var searchEngine = SearchEngine()
+    private let searchActor = SearchActor()
 
     // MARK: - Search
 
@@ -56,13 +63,15 @@ public final class NotesViewModel {
             searchDebounceTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .milliseconds(150))
                 guard !Task.isCancelled, let self else { return }
-                self.performSearch()
+                await self.performSearch()
             }
         }
     }
 
     public var tagFilter: String? {
-        didSet { performSearch() }
+        didSet {
+            Task { @MainActor [weak self] in await self?.performSearch() }
+        }
     }
 
     // MARK: - Sort
@@ -145,26 +154,36 @@ public final class NotesViewModel {
 
     // MARK: - Search
 
-    private func performSearch() {
-        var results = searchEngine.filter(notes: allNotes, query: searchQuery)
+    /// Runs the (heavy) filter on `searchActor` off the main actor, then
+    /// applies the results back on the main actor. The result is dropped if a
+    /// newer query has superseded this one while filtering was in flight, so a
+    /// slow search can't overwrite the list with stale results.
+    private func performSearch() async {
+        let query = searchQuery
+        let snapshot = allNotes
+        let results = await searchActor.filter(notes: snapshot, query: query)
+        guard query == searchQuery else { return }
         if let tag = tagFilter {
-            results = results.filter { $0.tags.contains(tag) }
+            filteredNotes = results.filter { $0.tags.contains(tag) }
+        } else {
+            filteredNotes = results
         }
-        filteredNotes = results
     }
 
     public func clearSearch() {
         searchQuery = ""
         tagFilter = nil
+        // The `searchQuery` didSet just scheduled a debounced search; cancel it
+        // and run the (empty-query) search immediately so the list clears now.
         searchDebounceTask?.cancel()
-        performSearch()
+        Task { @MainActor [weak self] in await self?.performSearch() }
     }
 
     public func createOrSelectNote() {
         let title = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return }
 
-        if let match = searchEngine.exactTitleMatch(notes: allNotes, query: title) {
+        if let match = SearchEngine.exactTitleMatch(notes: allNotes, query: title) {
             filteredNotes = [match]
             selectedNoteID = match.id
             return
@@ -184,9 +203,11 @@ public final class NotesViewModel {
 
     private func rebuildNotesByID() {
         notesByID = Dictionary(uniqueKeysWithValues: allNotes.map { ($0.id, $0) })
+        notesByFilename = Dictionary(uniqueKeysWithValues: allNotes.map { ($0.filename, $0) })
     }
 
     private func rebuildSortedNotes() {
+        updateShowCreateRow()
         // When a search is active, preserve the relevance ordering from SearchEngine
         if !searchQuery.isEmpty {
             sortedNotes = filteredNotes
@@ -212,6 +233,15 @@ public final class NotesViewModel {
                 return ascending ? cmp == .orderedAscending : cmp == .orderedDescending
             }
         }
+    }
+
+    private func updateShowCreateRow() {
+        let trimmed = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            showCreateRow = false
+            return
+        }
+        showCreateRow = SearchEngine.exactTitleMatch(notes: filteredNotes, query: trimmed) == nil
     }
 
     public func note(for id: UUID) -> Note? {
@@ -259,7 +289,10 @@ public final class NotesViewModel {
         if selectedNoteID == noteID {
             selectedNoteID = nil
         }
-        performSearch()
+        // Drop the row from the visible list immediately, then reconcile the
+        // full filtered/sorted set off the main actor.
+        filteredNotes.removeAll { $0.id == noteID }
+        Task { @MainActor [weak self] in await self?.performSearch() }
         Task {
             try? await noteStore?.deleteNote(noteID: noteID)
         }
@@ -272,7 +305,12 @@ public final class NotesViewModel {
                 note.title = newTitle
                 note.invalidateSearchCache()
             }
-            performSearch()
+            // `filename` may have changed as part of the store's rename (it
+            // mutates the shared `Note` in place, so `allNotes`'s didSet never
+            // fires) — refresh the filename index so it doesn't point at a
+            // stale key.
+            rebuildNotesByID()
+            await performSearch()
         }
     }
 
@@ -375,11 +413,23 @@ public final class NotesViewModel {
 
     // MARK: - Reconcile / Flush
 
-    public func reconcileFilesystem() async {
+    /// Reconciles the in-memory notes against disk. When `changedPaths` is
+    /// given (a batch of FSEvents paths), only those paths are re-read instead
+    /// of the whole vault, and `allNotes`/search are only refreshed if
+    /// something actually changed (skips self-triggered autosave events).
+    /// Pass `nil` to force a full-vault rescan (manual reconcile, or FSEvents
+    /// flags that mean the incremental path list can't be trusted).
+    public func reconcileFilesystem(changedPaths: [String]? = nil) async {
         guard let store = noteStore else { return }
-        try? await store.reconcileWithFilesystem()
+        if let changedPaths {
+            guard !changedPaths.isEmpty else { return }
+            let changed = await store.reconcilePaths(changedPaths)
+            guard changed else { return }
+        } else {
+            try? await store.reconcileWithFilesystem()
+        }
         allNotes = await store.allNotes()
-        performSearch()
+        await performSearch()
     }
 
     public func flushBeforeQuit() async {
@@ -402,7 +452,7 @@ public final class NotesViewModel {
                 title: imported.title, body: imported.body, tags: imported.tags
             )
             if let note { allNotes.append(note) }
-            performSearch()
+            await performSearch()
         }
     }
 
@@ -411,7 +461,7 @@ public final class NotesViewModel {
             guard let store = noteStore else { return }
             let note = try await store.addImportedNote(title: title, body: body, tags: tags)
             allNotes.append(note)
-            performSearch()
+            await performSearch()
             selectedNoteID = note.id
         }
     }
@@ -460,11 +510,24 @@ public final class NotesViewModel {
     // MARK: - Sync Status
 
     public func updateSyncStatus(filename: String, status: SyncStatus) {
-        if let note = allNotes.first(where: { $0.filename == filename }) {
+        updateSyncStatuses([filename: status])
+    }
+
+    /// Applies a batch of filename -> status updates in one pass, instead of
+    /// one main-actor hop and one linear `allNotes` scan per file. Only
+    /// touches notes whose status actually changed, so unrelated rows don't
+    /// get an Observation invalidation on every iCloud metadata tick.
+    public func updateSyncStatuses(_ statuses: [String: SyncStatus]) {
+        guard !statuses.isEmpty else { return }
+        var changed: [String: SyncStatus] = [:]
+        for (filename, status) in statuses {
+            guard let note = notesByFilename[filename], note.syncStatus != status else { continue }
             note.syncStatus = status
+            changed[filename] = status
         }
+        guard !changed.isEmpty else { return }
         Task {
-            await noteStore?.updateSyncStatus(filename: filename, status: status)
+            await noteStore?.updateSyncStatuses(changed)
         }
     }
 
@@ -511,7 +574,7 @@ public final class NotesViewModel {
                 filteredNotes = allNotes
             } else if !searchTerm.isEmpty {
                 searchQuery = searchTerm
-                if let match = searchEngine.exactTitleMatch(notes: allNotes, query: searchTerm) {
+                if let match = SearchEngine.exactTitleMatch(notes: allNotes, query: searchTerm) {
                     selectedNoteID = match.id
                 }
             }
@@ -528,7 +591,7 @@ public final class NotesViewModel {
                     tags: tags
                 )
                 allNotes.append(note)
-                performSearch()
+                await performSearch()
                 selectedNoteID = note.id
             }
             onURLActivation?()
@@ -553,7 +616,7 @@ public final class NotesViewModel {
                     allNotes.append(note)
                 }
             }
-            performSearch()
+            await performSearch()
         }
     }
 }

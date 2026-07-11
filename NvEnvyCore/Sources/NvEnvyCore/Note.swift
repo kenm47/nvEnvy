@@ -28,6 +28,10 @@ public final class Note: Identifiable, @unchecked Sendable {
     @ObservationIgnored public var cachedLowercaseBody: String
     @ObservationIgnored public var cachedLowercaseTags: String
 
+    // List-render optimization: first non-empty line of the body, shown in
+    // preview rows. Cached so each row render avoids splitting the whole body.
+    @ObservationIgnored public var cachedFirstLine: String
+
     public init(
         id: UUID = UUID(),
         title: String,
@@ -49,12 +53,24 @@ public final class Note: Identifiable, @unchecked Sendable {
         self.cachedLowercaseTitle = title.lowercased()
         self.cachedLowercaseBody = body.lowercased()
         self.cachedLowercaseTags = tags.joined(separator: " ").lowercased()
+        self.cachedFirstLine = Note.firstLine(of: body)
     }
 
     public func invalidateSearchCache() {
         cachedLowercaseTitle = title.lowercased()
         cachedLowercaseBody = body.lowercased()
         cachedLowercaseTags = tags.joined(separator: " ").lowercased()
+        cachedFirstLine = Note.firstLine(of: body)
+    }
+
+    /// First non-empty line of `body` (leading/trailing whitespace and blank
+    /// lines trimmed). Avoids splitting the entire body into components.
+    public static func firstLine(of body: String) -> String {
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let nl = trimmed.firstIndex(where: { $0 == "\n" || $0 == "\r" || $0 == "\r\n" }) {
+            return String(trimmed[trimmed.startIndex..<nl])
+        }
+        return trimmed
     }
 
     public static func sanitizedFilename(from title: String) -> String {

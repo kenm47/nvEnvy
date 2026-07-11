@@ -92,7 +92,7 @@ final class SearchEngineTests: XCTestCase {
             Note(title: "Test Note"),
             Note(title: "Test Note Extra"),
         ]
-        let match = engine.exactTitleMatch(notes: notes, query: "test note")
+        let match = SearchEngine.exactTitleMatch(notes: notes, query: "test note")
         XCTAssertEqual(match?.title, "Test Note")
     }
 
@@ -113,7 +113,7 @@ final class SearchEngineTests: XCTestCase {
             Note(title: "Banana Split"),
             Note(title: "Application Notes"),
         ]
-        let match = engine.autocompleteTitlePrefix(notes: notes, query: "app")
+        let match = SearchEngine.autocompleteTitlePrefix(notes: notes, query: "app")
         XCTAssertNotNil(match)
         XCTAssertTrue(match!.title.lowercased().hasPrefix("app"))
     }
@@ -122,13 +122,13 @@ final class SearchEngineTests: XCTestCase {
         let notes = [
             Note(title: "Banana Split"),
         ]
-        let match = engine.autocompleteTitlePrefix(notes: notes, query: "app")
+        let match = SearchEngine.autocompleteTitlePrefix(notes: notes, query: "app")
         XCTAssertNil(match)
     }
 
     func testAutocompleteTitlePrefixEmpty() {
         let notes = [Note(title: "Test")]
-        let match = engine.autocompleteTitlePrefix(notes: notes, query: "")
+        let match = SearchEngine.autocompleteTitlePrefix(notes: notes, query: "")
         XCTAssertNil(match)
     }
 

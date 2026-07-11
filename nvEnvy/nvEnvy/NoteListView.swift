@@ -10,16 +10,9 @@ struct NoteListView: View {
         appState.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var hasExactTitleMatch: Bool {
-        let q = trimmedQuery
-        guard !q.isEmpty else { return true }
-        let lower = q.lowercased()
-        return sortedNotes.contains { $0.title.lowercased() == lower }
-    }
-
-    private var showCreateRow: Bool {
-        !trimmedQuery.isEmpty && !hasExactTitleMatch
-    }
+    // "Create <query>" row visibility is precomputed in the view model
+    // (`AppState.showCreateRow`) so this body doesn't re-scan every title.
+    private var showCreateRow: Bool { appState.showCreateRow }
 
     var body: some View {
         @Bindable var appState = appState
@@ -221,23 +214,29 @@ struct NoteListView: View {
 
 // MARK: - Row Views
 
+// Reused across all rows: constructing a FormatStyle per render is a
+// measurable per-row cost in long lists.
+private let rowModifiedDateStyle = Date.FormatStyle(date: .abbreviated, time: .shortened)
+private let rowRelativeDateStyle = Date.RelativeFormatStyle(presentation: .named)
+
 struct NoteRow: View {
     let note: Note
     let appState: AppState
 
     var body: some View {
+        let modifiedString = note.modifiedDate.formatted(rowModifiedDateStyle)
         HStack {
             InlineNoteTitle(note: note, appState: appState,
                             font: .system(size: appState.tableFontSize))
             SyncStatusIcon(status: note.syncStatus)
             Spacer()
-            Text(note.modifiedDate.formatted(date: .abbreviated, time: .shortened))
+            Text(modifiedString)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(note.title), modified \(note.modifiedDate.formatted(date: .abbreviated, time: .shortened))")
+        .accessibilityLabel("\(note.title), modified \(modifiedString)")
     }
 }
 
@@ -245,10 +244,7 @@ struct NotePreviewRow: View {
     let note: Note
     let appState: AppState
 
-    private var firstLine: String {
-        let body = note.body.trimmingCharacters(in: .whitespacesAndNewlines)
-        return body.components(separatedBy: .newlines).first ?? ""
-    }
+    private var firstLine: String { note.cachedFirstLine }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -277,7 +273,7 @@ struct NotePreviewRow: View {
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(note.title), \(note.tags.isEmpty ? "" : "tags: \(note.tags.joined(separator: ", ")), ")modified \(note.modifiedDate.formatted(.relative(presentation: .named)))")
+        .accessibilityLabel("\(note.title), \(note.tags.isEmpty ? "" : "tags: \(note.tags.joined(separator: ", ")), ")modified \(note.modifiedDate.formatted(rowRelativeDateStyle))")
     }
 }
 

@@ -133,6 +133,15 @@ public actor NoteStore {
         note.syncStatus = status
     }
 
+    /// One actor hop for a batch of filename -> status updates, instead of a
+    /// separate `Task` per changed file.
+    public func updateSyncStatuses(_ statuses: [String: SyncStatus]) {
+        for (filename, status) in statuses {
+            guard let id = filenameIndex[filename], let note = notes[id] else { continue }
+            note.syncStatus = status
+        }
+    }
+
     // MARK: - Dirty Tracking & Flush
 
     public func markDirty(_ noteID: UUID) {
@@ -217,5 +226,60 @@ public actor NoteStore {
             unindexNote(note)
             notes.removeValue(forKey: note.id)
         }
+    }
+
+    /// Reconciles only the given absolute file paths (from an FSEvents batch)
+    /// instead of re-reading the whole vault. Returns whether anything actually
+    /// changed, so the caller can skip reassigning its notes snapshot when
+    /// nothing did (e.g. the events were all our own autosaves).
+    public func reconcilePaths(_ absolutePaths: [String]) async -> Bool {
+        var changed = false
+        var seenFilenames = Set<String>()
+
+        for path in absolutePaths {
+            guard let filename = await storage.filename(forPath: path) else { continue }
+            guard seenFilenames.insert(filename).inserted else { continue }
+
+            let url = URL(fileURLWithPath: path)
+            let existingID = filenameIndex[filename]
+            let existing = existingID.flatMap { notes[$0] }
+
+            guard await storage.fileExists(at: url) else {
+                // Deleted (or never-existed) file.
+                if let existing {
+                    unindexNote(existing)
+                    notes.removeValue(forKey: existing.id)
+                    changed = true
+                }
+                continue
+            }
+
+            if await storage.wasSelfWrite(path: path) {
+                continue
+            }
+
+            guard let stat = await storage.statFile(at: url) else { continue }
+            if let existing {
+                if existing.fileModifiedDate == stat.modDate && existing.fileSize == stat.size {
+                    continue // no real change
+                }
+                guard let fresh = await storage.loadSingleNote(at: url) else { continue }
+                existing.body = fresh.body
+                existing.tags = fresh.tags
+                existing.title = fresh.title
+                existing.modifiedDate = fresh.modifiedDate
+                existing.fileModifiedDate = fresh.fileModifiedDate
+                existing.fileSize = fresh.fileSize
+                existing.invalidateSearchCache()
+                changed = true
+            } else {
+                guard let fresh = await storage.loadSingleNote(at: url) else { continue }
+                notes[fresh.id] = fresh
+                indexNote(fresh)
+                changed = true
+            }
+        }
+
+        return changed
     }
 }
