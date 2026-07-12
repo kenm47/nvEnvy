@@ -30,10 +30,21 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>AtkinsonHyperlegible-Regular.ttf</string>
+		<string>AtkinsonHyperlegible-Bold.ttf</string>
+		<string>AtkinsonHyperlegible-Italic.ttf</string>
+		<string>AtkinsonHyperlegible-BoldItalic.ttf</string>
+		<string>OpenDyslexic-Regular.otf</string>
+		<string>OpenDyslexic-Bold.otf</string>
+		<string>OpenDyslexic-Italic.otf</string>
+		<string>OpenDyslexic-BoldItalic.otf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
-		<string></string>
+		<string>LaunchBackground</string>
 	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

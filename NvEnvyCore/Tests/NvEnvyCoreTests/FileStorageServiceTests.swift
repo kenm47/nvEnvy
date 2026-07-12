@@ -170,4 +170,41 @@ final class FileStorageServiceTests: XCTestCase {
         XCTAssertEqual(notes.count, 1)
         XCTAssertEqual(notes[0].filename, "a/b/c/Deep")
     }
+
+    // MARK: - NSFileCoordinatorAdapter (iOS coordinator seam)
+
+    func testNSFileCoordinatorAdapter_writeReadDeleteRoundTrip() async throws {
+        let coordinatedStorage = FileStorageService(
+            notesDirectory: tempDir,
+            coordinator: NSFileCoordinatorAdapter()
+        )
+
+        let note = Note(title: "Coordinated Note", body: "coordinated body", tags: ["a"])
+        try await coordinatedStorage.writeNote(note)
+
+        let url = await coordinatedStorage.fileURL(for: note)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+
+        let result = try await coordinatedStorage.readNote(at: url)
+        XCTAssertEqual(result.parsed.body, "coordinated body")
+        XCTAssertEqual(result.parsed.frontmatter?.tags, ["a"])
+
+        try await coordinatedStorage.deleteNote(note)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+    }
+
+    func testNSFileCoordinatorAdapter_readAllNotes_matchesPassthrough() async throws {
+        let file1 = tempDir.appendingPathComponent("Note One.md")
+        let file2 = tempDir.appendingPathComponent("Note Two.md")
+        try "Body one".write(to: file1, atomically: true, encoding: .utf8)
+        try "Body two".write(to: file2, atomically: true, encoding: .utf8)
+
+        let coordinatedStorage = FileStorageService(
+            notesDirectory: tempDir,
+            coordinator: NSFileCoordinatorAdapter()
+        )
+        let notes = try await coordinatedStorage.readAllNotes()
+        XCTAssertEqual(notes.count, 2)
+        XCTAssertEqual(Set(notes.map(\.title)), ["Note One", "Note Two"])
+    }
 }

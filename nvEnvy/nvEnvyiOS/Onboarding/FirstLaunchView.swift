@@ -56,8 +56,10 @@ struct FirstLaunchView: View {
         .padding(32)
         .sheet(isPresented: $showingPicker) {
             FolderPicker(startingDirectory: startingDirectory) { url in
-                folderProvider.saveBookmark(for: url)
+                folderProvider.adoptPickedFolder(url)
                 onPick(url)
+                showingPicker = false
+            } onCancel: {
                 showingPicker = false
             }
             .ignoresSafeArea()

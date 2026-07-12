@@ -5,6 +5,8 @@ extension Notification.Name {
     static let nvEnvyNextNote = Notification.Name("nvenvy.ios.nextNote")
     static let nvEnvyPreviousNote = Notification.Name("nvenvy.ios.previousNote")
     static let nvEnvyDeleteSelectedNote = Notification.Name("nvenvy.ios.deleteSelectedNote")
+    static let nvEnvyNewNote = Notification.Name("nvenvy.ios.newNote")
+    static let nvEnvyFolderChanged = Notification.Name("nvenvy.ios.folderChanged")
 }
 
 final class EditorTextView: UITextView {
@@ -20,8 +22,11 @@ final class EditorTextView: UITextView {
             ("l", .command, #selector(cmdFocusSearch)),
             ("j", .command, #selector(cmdNextNote)),
             ("k", .command, #selector(cmdPreviousNote)),
+            ("n", .command, #selector(cmdNewNote)),
         ]
-        let base = cmds.map { UIKeyCommand(input: $0.0, modifierFlags: $0.1, action: $0.2) }
+        var base = cmds.map { UIKeyCommand(input: $0.0, modifierFlags: $0.1, action: $0.2) }
+        let deleteCmd = UIKeyCommand(input: UIKeyCommand.inputDelete, modifierFlags: .command, action: #selector(cmdDeleteNote))
+        base.append(deleteCmd)
         for c in base { c.wantsPriorityOverSystemBehavior = true }
         return (super.keyCommands ?? []) + base
     }
@@ -39,5 +44,11 @@ final class EditorTextView: UITextView {
     }
     @objc private func cmdPreviousNote() {
         NotificationCenter.default.post(name: .nvEnvyPreviousNote, object: nil)
+    }
+    @objc private func cmdNewNote() {
+        NotificationCenter.default.post(name: .nvEnvyNewNote, object: nil)
+    }
+    @objc private func cmdDeleteNote() {
+        NotificationCenter.default.post(name: .nvEnvyDeleteSelectedNote, object: nil)
     }
 }

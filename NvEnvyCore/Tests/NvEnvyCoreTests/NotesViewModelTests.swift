@@ -203,6 +203,36 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertFalse(vm.showCreateRow)
     }
 
+    // MARK: - flushBeforeQuit() persists the pending debounced body edit
+
+    func testFlushBeforeQuit_persistsPendingBodyEdit_evenBeforeDebounceFires() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("NvEnvyCoreTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        vm.attach(folderURL: tempDir)
+        // Let the initial (empty) load complete.
+        try await Task.sleep(for: .milliseconds(50))
+
+        vm.searchQuery = "Quit Test"
+        vm.createOrSelectNote()
+        try await Task.sleep(for: .milliseconds(50))
+        guard let note = vm.allNotes.first else {
+            return XCTFail("note was not created")
+        }
+
+        // Update the body but do NOT wait for the 500ms debounce — this is
+        // the state the app is in if it's backgrounded/killed right after a
+        // keystroke. flushBeforeQuit must not lose this edit.
+        vm.updateNoteBody(noteID: note.id, body: "unsaved edit")
+        await vm.flushBeforeQuit()
+
+        let fileURL = tempDir.appendingPathComponent(note.filename + ".md")
+        let contents = try String(contentsOf: fileURL, encoding: .utf8)
+        XCTAssertTrue(contents.contains("unsaved edit"), "flushBeforeQuit must persist the pending debounced edit")
+    }
+
     // MARK: - Helpers
 
     private func seedAllNotes(_ notes: [Note]) {

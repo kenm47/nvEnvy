@@ -732,8 +732,7 @@ public final class AppState {
 
     public func copyNoteLink(noteID: UUID) {
         guard let note = note(for: noteID) else { return }
-        let encoded = note.title.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? note.title
-        let link = "nvenvy://find/\(encoded)"
+        let link = NoteLinkBuilder.link(for: note)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(link, forType: .string)
     }

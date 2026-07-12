@@ -121,7 +121,25 @@ public actor FileStorageService {
     /// FSEvents reconciliation path so the two never drift.
     private static func parseNoteFile(at url: URL, allowedExtensions: Set<String>, basePrefix: String) -> Note? {
         guard allowedExtensions.contains(url.pathExtension.lowercased()) else { return nil }
-        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { return nil }
+
+        // A plain `Data(contentsOf:)` on a not-yet-downloaded iCloud item blocks
+        // until the download completes. Across a large external vault (e.g. an
+        // Obsidian iCloud folder with thousands of notes) that can make the
+        // parallel scan hang for a very long time — or effectively forever if a
+        // single file's download stalls, since it blocks the whole chunk it's
+        // in. Skip anything not already local; `IOSFolderMonitor` kicks off the
+        // download and `reconcileFilesystem` picks the note up once it lands.
+        if let status = try? url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey]).ubiquitousItemDownloadingStatus,
+           status != .current {
+            return nil
+        }
+
+        // Not `.mappedIfSafe`: memory-mapping chokes with "Unknown compression
+        // scheme encountered" on files under iCloud sync engines (observed with
+        // an Obsidian iCloud vault on iOS) whose on-disk extents use APFS
+        // compression the mapper can't handle. A normal read is negligibly
+        // slower for note-sized text files and works everywhere.
+        guard let data = try? Data(contentsOf: url) else { return nil }
         let (content, encoding) = Self.decodeWithFallback(data)
         guard let content else { return nil }
 
@@ -154,32 +172,38 @@ public actor FileStorageService {
     }
 
     public func readAllNotes() async throws -> [Note] {
-        guard let enumerator = fileManager.enumerator(
-            at: notesDirectory,
-            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey, .isDirectoryKey],
-            options: [.skipsHiddenFiles]
-        ) else { return [] }
+        let exts = allowedExtensions
+        let urls: [URL] = try coordinator.coordinate(readingItemAt: notesDirectory) { dir in
+            guard let enumerator = self.fileManager.enumerator(
+                at: dir,
+                includingPropertiesForKeys: [
+                    .contentModificationDateKey, .fileSizeKey, .isDirectoryKey,
+                    .ubiquitousItemDownloadingStatusKey,
+                ],
+                options: [.skipsHiddenFiles]
+            ) else { return [] }
 
-        let ignoredDirs: Set<String> = [".obsidian"]
-        var urls: [URL] = []
+            let ignoredDirs: Set<String> = [".obsidian"]
+            var collected: [URL] = []
 
-        while let url = enumerator.nextObject() as? URL {
-            if let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory, isDir {
-                let dirName = url.lastPathComponent
-                if dirName.hasPrefix(".") || ignoredDirs.contains(dirName) {
-                    enumerator.skipDescendants()
+            while let url = enumerator.nextObject() as? URL {
+                if let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory, isDir {
+                    let dirName = url.lastPathComponent
+                    if dirName.hasPrefix(".") || ignoredDirs.contains(dirName) {
+                        enumerator.skipDescendants()
+                    }
+                    continue
                 }
-                continue
+                guard exts.contains(url.pathExtension.lowercased()) else { continue }
+                collected.append(url)
             }
-            guard allowedExtensions.contains(url.pathExtension.lowercased()) else { continue }
-            urls.append(url)
+            return collected
         }
 
         guard !urls.isEmpty else { return [] }
 
         // Enumeration must stay serial (NSDirectoryEnumerator isn't concurrency-safe),
         // but per-file read/decode/parse is pure and independent, so fan it out.
-        let exts = allowedExtensions
         let prefix = basePrefix
         let chunkCount = max(1, min(urls.count, ProcessInfo.processInfo.activeProcessorCount))
         let chunkSize = max(1, (urls.count + chunkCount - 1) / chunkCount)

@@ -132,14 +132,20 @@ public final class NotesViewModel {
 
     /// Wire up storage, NoteStore, and trigger initial load. Call after the
     /// notes folder URL is known.
-    public func attach(folderURL: URL, allowedExtensions: Set<String>? = nil) {
+    public func attach(
+        folderURL: URL,
+        allowedExtensions: Set<String>? = nil,
+        coordinator: FileAccessCoordinator = PassthroughFileAccessCoordinator(),
+        onInitialLoad: (() -> Void)? = nil
+    ) {
         if let exts = allowedExtensions {
             self.allowedExtensions = Array(exts).sorted()
         }
         notesFolderURL = folderURL
         let storage = FileStorageService(
             notesDirectory: folderURL,
-            allowedExtensions: Set(self.allowedExtensions)
+            allowedExtensions: Set(self.allowedExtensions),
+            coordinator: coordinator
         )
         self.storageService = storage
         let store = NoteStore(storage: storage)
@@ -149,6 +155,7 @@ public final class NotesViewModel {
             try? await store.loadAll()
             self.allNotes = await store.allNotes()
             self.filteredNotes = self.allNotes
+            onInitialLoad?()
         }
     }
 
@@ -251,17 +258,24 @@ public final class NotesViewModel {
     // MARK: - CRUD
 
     private var bodyUpdateTask: Task<Void, Never>?
+    /// The most recent body edit that hasn't yet been flushed to `NoteStore`
+    /// (and therefore hasn't been WAL-recorded). `flushBeforeQuit` must apply
+    /// this synchronously instead of just cancelling the debounce task, or the
+    /// last <500ms of typing is silently lost on background/quit.
+    private var pendingBodyUpdate: (noteID: UUID, body: String)?
 
     public func updateNoteBody(noteID: UUID, body: String) {
         guard let note = note(for: noteID) else { return }
         note.body = body
         note.modifiedDate = Date()
+        pendingBodyUpdate = (noteID, body)
 
         // Debounce expensive work: search cache invalidation, WAL write.
         bodyUpdateTask?.cancel()
         bodyUpdateTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled, let self else { return }
+            self.pendingBodyUpdate = nil
             note.invalidateSearchCache()
             await self.noteStore?.updateBody(noteID: noteID, body: body)
         }
@@ -433,12 +447,15 @@ public final class NotesViewModel {
     }
 
     public func flushBeforeQuit() async {
-        if let task = bodyUpdateTask {
-            task.cancel()
-            bodyUpdateTask = nil
-            for note in allNotes {
-                note.invalidateSearchCache()
-            }
+        bodyUpdateTask?.cancel()
+        bodyUpdateTask = nil
+        if let pending = pendingBodyUpdate {
+            pendingBodyUpdate = nil
+            note(for: pending.noteID)?.invalidateSearchCache()
+            await noteStore?.updateBody(noteID: pending.noteID, body: pending.body)
+        }
+        for note in allNotes {
+            note.invalidateSearchCache()
         }
         await noteStore?.flushDirtyNotes()
     }
