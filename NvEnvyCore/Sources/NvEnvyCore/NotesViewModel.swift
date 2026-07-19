@@ -266,26 +266,28 @@ public final class NotesViewModel {
 
     public func updateNoteBody(noteID: UUID, body: String) {
         guard let note = note(for: noteID) else { return }
+        // Update the shared reference immediately so the UI stays responsive.
+        // NoteStore applies modifiedDate and search-cache invalidation when the
+        // debounced write lands.
         note.body = body
-        note.modifiedDate = Date()
         pendingBodyUpdate = (noteID, body)
 
-        // Debounce expensive work: search cache invalidation, WAL write.
+        // Debounce the WAL write.
         bodyUpdateTask?.cancel()
         bodyUpdateTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled, let self else { return }
             self.pendingBodyUpdate = nil
-            note.invalidateSearchCache()
             await self.noteStore?.updateBody(noteID: noteID, body: body)
         }
     }
 
     public func updateNoteTags(noteID: UUID, tags: [String]) {
         guard let note = note(for: noteID) else { return }
+        // Update the shared reference immediately so the UI stays responsive.
+        // NoteStore applies modifiedDate and search-cache invalidation when the
+        // store call lands.
         note.tags = tags
-        note.modifiedDate = Date()
-        note.invalidateSearchCache()
         _cachedKnownTags = nil
 
         Task {
@@ -451,7 +453,6 @@ public final class NotesViewModel {
         bodyUpdateTask = nil
         if let pending = pendingBodyUpdate {
             pendingBodyUpdate = nil
-            note(for: pending.noteID)?.invalidateSearchCache()
             await noteStore?.updateBody(noteID: pending.noteID, body: pending.body)
         }
         for note in allNotes {

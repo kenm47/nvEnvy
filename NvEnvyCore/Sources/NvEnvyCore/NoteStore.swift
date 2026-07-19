@@ -94,14 +94,18 @@ public actor NoteStore {
     }
 
     public func updateBody(noteID: UUID, body: String) {
-        guard notes[noteID] != nil else { return }
-        // Note is a reference type shared with AppState — already mutated by caller
+        guard let note = notes[noteID] else { return }
+        note.body = body
+        note.modifiedDate = Date()
+        note.invalidateSearchCache()
         markDirty(noteID)
     }
 
     public func updateTags(noteID: UUID, tags: [String]) {
-        guard notes[noteID] != nil else { return }
-        // Note is a reference type shared with AppState — already mutated by caller
+        guard let note = notes[noteID] else { return }
+        note.tags = tags
+        note.modifiedDate = Date()
+        note.invalidateSearchCache()
         markDirty(noteID)
     }
 
