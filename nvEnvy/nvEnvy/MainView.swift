@@ -93,7 +93,7 @@ struct WindowAccessor: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
-            view.window?.setFrameAutosaveName("nvEnvyMainWindow")
+            view.window?.setFrameAutosaveName(MainWindow.autosaveName)
         }
         return view
     }
