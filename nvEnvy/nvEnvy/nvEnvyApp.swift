@@ -305,6 +305,13 @@ enum FormattingCommand {
     case bold, italic, strikethrough, indent, outdent
 }
 
+enum MainWindow {
+    /// Set on the note window by `WindowAccessor` in MainView, and used to pick
+    /// that window back out of `NSApp.windows`. The Settings, preview and about
+    /// scenes are separate windows that must not be mistaken for it.
+    static let autosaveName = "nvEnvyMainWindow"
+}
+
 extension Notification.Name {
     static let nvEnvyFormatting = Notification.Name("nvEnvyFormatting")
     static let nvEnvyShowTagEditor = Notification.Name("nvEnvyShowTagEditor")
@@ -336,6 +343,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         NSApp.servicesProvider = servicesProvider
         NSUpdateDynamicServices()
+
+        KeyboardShortcuts.onKeyUp(for: .activateApp) { [weak self] in
+            self?.toggleActivation()
+        }
+    }
+
+    /// Global hotkey: bring the note window up with the search field focused, or
+    /// hide the app if that window is already frontmost. Hiding is gated on the
+    /// note window specifically, so the hotkey pulls it forward rather than
+    /// hiding everything when Settings or the preview window happens to be key.
+    private func toggleActivation() {
+        let note = noteWindow()
+        if NSApp.isActive, note?.isKeyWindow == true {
+            NSApp.hide(nil)
+            return
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        note?.makeKeyAndOrderFront(nil)
+        NotificationCenter.default.post(name: .nvEnvyFocusSearchField, object: nil)
+    }
+
+    /// The note window, identified by the autosave name MainView stamps on it.
+    /// Falls back to the first ordinary content window so a note window that
+    /// somehow lost its tag still wins over Settings, preview and about.
+    private func noteWindow() -> NSWindow? {
+        if let tagged = NSApp.windows.first(where: { $0.frameAutosaveName == MainWindow.autosaveName }) {
+            return tagged
+        }
+        return NSApp.windows.first { window in
+            guard window.canBecomeMain, !(window is NSPanel) else { return false }
+            let id = window.identifier?.rawValue ?? ""
+            return id != "preview" && id != "about" && !id.localizedCaseInsensitiveContains("settings")
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -351,14 +391,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
-        guard let appState = appState else { return }
-        let semaphore = DispatchSemaphore(value: 0)
+    /// Guards against replying to the terminate request twice — once from the
+    /// flush and once from the watchdog below. Main thread only.
+    private var hasRepliedToTerminate = false
+
+    /// Flush pending edits before quitting.
+    ///
+    /// This deliberately does not block the main thread. `flushBeforeQuit()` is
+    /// `@MainActor`, so waiting on it from the main thread deadlocks: the work
+    /// can never be scheduled, and the app quits on the timeout having saved
+    /// nothing. `.terminateLater` instead keeps the run loop alive until
+    /// `reply(toApplicationShouldTerminate:)`, which leaves the main actor free
+    /// to run the flush.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let appState = appState else { return .terminateNow }
+
+        let replyOnce = { [weak self] in
+            guard let self, !self.hasRepliedToTerminate else { return }
+            self.hasRepliedToTerminate = true
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+
         Task { @MainActor in
             await appState.flushBeforeQuit()
-            semaphore.signal()
+            replyOnce()
         }
-        semaphore.wait(timeout: .now() + 5)
+
+        // Watchdog: a wedged write must not leave the app unquittable. Losing
+        // the tail of an edit beats refusing to exit.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: replyOnce)
+
+        return .terminateLater
     }
 
     // MARK: - AppleScript Support

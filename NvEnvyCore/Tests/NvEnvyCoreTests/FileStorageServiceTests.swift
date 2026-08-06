@@ -27,6 +27,46 @@ final class FileStorageServiceTests: XCTestCase {
         XCTAssertEqual(result.parsed.frontmatter?.tags, ["swift"])
     }
 
+    /// Frontmatter keys nvEnvy doesn't model must survive a read/edit/write
+    /// cycle. Joplin's two-way sync keys note identity on `id`, so dropping it
+    /// makes an edited note look brand new and get re-imported as a duplicate.
+    ///
+    /// This deliberately goes through readAllNotes/writeNote rather than
+    /// FrontmatterParser alone — the parser round-trips unknown keys fine, and
+    /// testing it in isolation is what let the write path lose them unnoticed.
+    func testUnknownFrontmatterKeysSurviveWrite() async throws {
+        let file = tempDir.appendingPathComponent("test nveny.md")
+        try """
+        ---
+        id: ef6e5d5434a5453cace6e8553ae85bb3
+        title: test nveny
+        tags:
+          - radar
+        created: 2026-08-06T07:11:00Z
+        modified: 2026-08-06T10:56:32Z
+        ---
+        Original body
+        """.write(to: file, atomically: true, encoding: .utf8)
+
+        let notes = try await storage.readAllNotes()
+        let note = try XCTUnwrap(notes.first)
+        XCTAssertEqual(note.unknownFrontmatterFields.count, 2)
+
+        note.body = "Edited body"
+        try await storage.writeNote(note)
+
+        let written = try String(contentsOf: file, encoding: .utf8)
+        XCTAssertTrue(written.contains("id: ef6e5d5434a5453cace6e8553ae85bb3"),
+                      "Joplin's note id was dropped on save:\n\(written)")
+        XCTAssertTrue(written.contains("title: test nveny"),
+                      "Unknown key `title` was dropped on save:\n\(written)")
+        XCTAssertTrue(written.contains("Edited body"))
+
+        // And the keys must still be there after a second cycle, not just the first.
+        let reread = try await storage.readAllNotes()
+        XCTAssertEqual(try XCTUnwrap(reread.first).unknownFrontmatterFields.count, 2)
+    }
+
     func testReadAllNotes() async throws {
         // Write two files manually
         let file1 = tempDir.appendingPathComponent("Note One.md")

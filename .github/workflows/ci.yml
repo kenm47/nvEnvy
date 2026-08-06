@@ -33,18 +33,23 @@ jobs:
         run: |
           xcodebuild \
             -project nvEnvy.xcodeproj \
-            -scheme nvEnvy \
+            -scheme "nvEnvy (Direct Download)" \
             -configuration Release \
             -destination 'platform=macOS' \
+            -derivedDataPath build/dd-direct \
             CODE_SIGNING_ALLOWED=NO \
             build
+      # Separate -derivedDataPath: both targets produce nvEnvy.app, so sharing
+      # one would have this build overwrite the previous step's bundle in place
+      # and fail on the leftover files.
       - name: Build nvEnvy-MAS (App Store, no Sparkle)
         working-directory: nvEnvy
         run: |
           xcodebuild \
             -project nvEnvy.xcodeproj \
-            -scheme nvEnvy-MAS \
+            -scheme "nvEnvy (App Store)" \
             -configuration Release \
             -destination 'platform=macOS' \
+            -derivedDataPath build/dd-appstore \
             CODE_SIGNING_ALLOWED=NO \
             build
