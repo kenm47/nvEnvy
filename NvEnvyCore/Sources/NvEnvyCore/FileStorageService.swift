@@ -194,6 +194,7 @@ public actor FileStorageService {
         note.fileModifiedDate = modDate
         note.fileSize = fileSize
         note.fileEncoding = encoding
+        note.unknownFrontmatterFields = parsed.frontmatter?.unknownFields ?? []
         return note
     }
 
@@ -294,7 +295,8 @@ public actor FileStorageService {
         let frontmatter = FrontmatterBlock(
             tags: note.tags,
             created: note.createdDate,
-            modified: note.modifiedDate
+            modified: note.modifiedDate,
+            unknownFields: note.unknownFrontmatterFields
         )
         let content = FrontmatterParser.serialize(
             frontmatter: frontmatter.isEmpty ? nil : frontmatter,
