@@ -10,9 +10,14 @@
 ```bash
 cd nvEnvy
 xcodegen generate
-xcodebuild -project nvEnvy.xcodeproj -scheme nvEnvy -configuration Release archive \
+xcodebuild -project nvEnvy.xcodeproj -scheme "nvEnvy (Direct Download)" -configuration Release archive \
   -archivePath build/nvEnvy.xcarchive
 ```
+
+Both macOS targets produce a bundle named `nvEnvy.app`, so always archive each
+scheme to its own `-archivePath`. Building both schemes into a shared
+`Build/Products/Release` directory leaves one bundle overwriting the other in
+place, with stale files from the first build still inside it.
 
 ## Universal Binary
 
@@ -23,7 +28,7 @@ The project is configured with `ARCHS = $(ARCHS_STANDARD)`, which builds for bot
 Sign with a Developer ID certificate for distribution outside the Mac App Store:
 
 ```bash
-xcodebuild -project nvEnvy.xcodeproj -scheme nvEnvy -configuration Release archive \
+xcodebuild -project nvEnvy.xcodeproj -scheme "nvEnvy (Direct Download)" -configuration Release archive \
   -archivePath build/nvEnvy.xcarchive \
   CODE_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
 ```
@@ -70,7 +75,7 @@ create-dmg \
 
 ## Sparkle Auto-Update
 
-The direct-download (DMG) build of nvEnvy includes Sparkle for auto-updates. The appcast URL is configured as `https://nvenvy.app/appcast.xml` in Info.plist (`SUFeedURL`). The Mac App Store build (scheme `nvEnvy-MAS`) excludes Sparkle entirely; MAS updates flow through the App Store.
+The direct-download (DMG) build of nvEnvy includes Sparkle for auto-updates. The appcast URL is configured as `https://nvenvy.app/appcast.xml` in Info.plist (`SUFeedURL`). The Mac App Store build (scheme `nvEnvy (App Store)`) excludes Sparkle entirely; MAS updates flow through the App Store.
 
 To publish an update:
 1. Build and sign the new version

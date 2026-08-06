@@ -18,12 +18,12 @@ xcodegen generate
 open nvEnvy.xcodeproj
 ```
 
-There are two app schemes:
+There are two macOS app schemes:
 
-- **`nvEnvy`** — direct-download build. Links Sparkle for in-app updates.
-- **`nvEnvy-MAS`** — Mac App Store build. Sparkle is excluded; updates flow through the App Store.
+- **`nvEnvy (Direct Download)`** — builds the `nvEnvy` target. Links Sparkle for in-app updates.
+- **`nvEnvy (App Store)`** — builds the `nvEnvy-MAS` target. Sparkle is excluded; updates flow through the App Store.
 
-For day-to-day development, use the `nvEnvy` scheme.
+For day-to-day development, use the `nvEnvy (Direct Download)` scheme.
 
 ## Tests
 

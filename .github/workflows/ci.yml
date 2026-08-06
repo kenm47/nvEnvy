@@ -33,7 +33,7 @@ jobs:
         run: |
           xcodebuild \
             -project nvEnvy.xcodeproj \
-            -scheme nvEnvy \
+            -scheme "nvEnvy (Direct Download)" \
             -configuration Release \
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO \
@@ -43,7 +43,7 @@ jobs:
         run: |
           xcodebuild \
             -project nvEnvy.xcodeproj \
-            -scheme nvEnvy-MAS \
+            -scheme "nvEnvy (App Store)" \
             -configuration Release \
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO \
