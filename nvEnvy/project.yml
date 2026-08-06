@@ -124,6 +124,13 @@ targets:
     templates: [nvEnvyMacBase]
     settings:
       base:
+        # Ships as nvEnvy.app, same as the direct-download target, so both write
+        # to Build/Products/<config>/nvEnvy.app. Building one after the other
+        # into shared DerivedData overwrites the first in place without cleaning
+        # and leaves a hybrid bundle. Build each scheme with its own
+        # -derivedDataPath (see RELEASING.md and .github/workflows/ci.yml).
+        # CONFIGURATION_BUILD_DIR does not work here: it moves this target's
+        # products but not the SwiftPM package products it links against.
         PRODUCT_NAME: nvEnvy
     info:
       path: nvEnvy/Info-MAS.plist

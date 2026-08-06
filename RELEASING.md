@@ -17,7 +17,24 @@ xcodebuild -project nvEnvy.xcodeproj -scheme "nvEnvy (Direct Download)" -configu
 Both macOS targets produce a bundle named `nvEnvy.app`, so always archive each
 scheme to its own `-archivePath`. Building both schemes into a shared
 `Build/Products/Release` directory leaves one bundle overwriting the other in
-place, with stale files from the first build still inside it.
+place, with stale files from the first build still inside it — you get the
+second target's `Info.plist` next to the first target's `Sparkle.framework`,
+and the copy step usually fails outright on the leftovers.
+
+For plain (non-archive) builds of both schemes, give each its own derived data:
+
+```bash
+xcodebuild -project nvEnvy.xcodeproj -scheme "nvEnvy (Direct Download)" \
+  -configuration Release -destination 'platform=macOS' \
+  -derivedDataPath build/dd-direct build
+xcodebuild -project nvEnvy.xcodeproj -scheme "nvEnvy (App Store)" \
+  -configuration Release -destination 'platform=macOS' \
+  -derivedDataPath build/dd-appstore build
+```
+
+`CONFIGURATION_BUILD_DIR` is not a fix for this: it relocates the target's own
+products but not the SwiftPM package products it links against, so the build
+fails looking for `KeyboardShortcuts_KeyboardShortcuts.bundle`.
 
 ## Universal Binary
 
