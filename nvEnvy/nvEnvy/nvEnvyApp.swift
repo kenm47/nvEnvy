@@ -391,14 +391,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
-        guard let appState = appState else { return }
-        let semaphore = DispatchSemaphore(value: 0)
+    /// Guards against replying to the terminate request twice — once from the
+    /// flush and once from the watchdog below. Main thread only.
+    private var hasRepliedToTerminate = false
+
+    /// Flush pending edits before quitting.
+    ///
+    /// This deliberately does not block the main thread. `flushBeforeQuit()` is
+    /// `@MainActor`, so waiting on it from the main thread deadlocks: the work
+    /// can never be scheduled, and the app quits on the timeout having saved
+    /// nothing. `.terminateLater` instead keeps the run loop alive until
+    /// `reply(toApplicationShouldTerminate:)`, which leaves the main actor free
+    /// to run the flush.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let appState = appState else { return .terminateNow }
+
+        let replyOnce = { [weak self] in
+            guard let self, !self.hasRepliedToTerminate else { return }
+            self.hasRepliedToTerminate = true
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+
         Task { @MainActor in
             await appState.flushBeforeQuit()
-            semaphore.signal()
+            replyOnce()
         }
-        semaphore.wait(timeout: .now() + 5)
+
+        // Watchdog: a wedged write must not leave the app unquittable. Losing
+        // the tail of an edit beats refusing to exit.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: replyOnce)
+
+        return .terminateLater
     }
 
     // MARK: - AppleScript Support
