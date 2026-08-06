@@ -426,6 +426,14 @@ public final class AppState {
         notes.onURLActivation = {
             NSApp.activate(ignoringOtherApps: true)
         }
+        notes.onNoteCommitted = { _ in
+            // The hook fires once the note exists and is selected; the extra hop
+            // lets SwiftUI commit that selection so EditorView's NSTextView is
+            // showing the new note before it becomes first responder.
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .nvEnvyFocusEditor, object: nil)
+            }
+        }
 
         restoreNotesFolder()
         DispatchQueue.main.async { [self] in

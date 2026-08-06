@@ -34,11 +34,15 @@ struct MainView: View {
                 SearchField(
                     query: $appState.searchQuery,
                     onReturn: {
-                        if !appState.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        if appState.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            // Nothing to create or match — just move into the editor.
+                            DispatchQueue.main.async {
+                                NotificationCenter.default.post(name: .nvEnvyFocusEditor, object: nil)
+                            }
+                        } else {
+                            // Focus follows the onNoteCommitted hook instead: creating a
+                            // note is async, so posting here would fire before it exists.
                             appState.createOrSelectNote()
-                        }
-                        DispatchQueue.main.async {
-                            NotificationCenter.default.post(name: .nvEnvyFocusEditor, object: nil)
                         }
                     },
                     onEscape: {

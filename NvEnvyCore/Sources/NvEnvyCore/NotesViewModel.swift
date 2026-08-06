@@ -6,7 +6,7 @@ import Foundation
 /// On macOS, `AppState` wraps an instance and forwards its public surface so
 /// existing UI files don't change. iOS uses this directly.
 ///
-/// Hooks (`onTagsChanged`, `onURLActivation`) let the platform shell layer
+/// Hooks (`onTagsChanged`, `onURLActivation`, `onNoteCommitted`) let the platform shell layer
 /// react to changes the VM doesn't know about — e.g. Finder tag mirroring on
 /// macOS, or `NSApp.activate` after a URL scheme handoff.
 @MainActor
@@ -134,6 +134,14 @@ public final class NotesViewModel {
     /// app to the foreground (`NSApp.activate` on macOS).
     public var onURLActivation: (() -> Void)?
 
+    /// Invoked once `createOrSelectNote()` has committed a selection — either an
+    /// existing note matched by title, or a newly created one. macOS uses this to
+    /// move focus into the editor. Creation is asynchronous, so this is the only
+    /// point at which the note is guaranteed to exist and be selected; callers
+    /// must not assume the selection has landed when `createOrSelectNote()`
+    /// returns. iOS leaves it nil.
+    public var onNoteCommitted: ((Note.ID) -> Void)?
+
     // MARK: - Init
 
     public init() {}
@@ -207,6 +215,7 @@ public final class NotesViewModel {
         if let match = SearchEngine.exactTitleMatch(notes: allNotes, query: title) {
             filteredNotes = [match]
             selectedNoteID = match.id
+            onNoteCommitted?(match.id)
             return
         }
 
@@ -217,6 +226,7 @@ public final class NotesViewModel {
             filteredNotes = [note]
             selectedNoteID = note.id
             searchQuery = ""
+            onNoteCommitted?(note.id)
         }
     }
 
