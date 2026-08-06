@@ -93,15 +93,28 @@ public actor NoteStore {
         return note
     }
 
+    /// Applies `body` and marks the note dirty.
+    ///
+    /// `Note` is a reference type shared with the view model, which mutates it
+    /// before calling here, so in practice this assignment is a no-op. It is
+    /// still done: a setter that silently ignores its own argument is a trap for
+    /// every other caller, and leaves the value that gets persisted depending on
+    /// whether the caller happened to mutate the shared object first.
     public func updateBody(noteID: UUID, body: String) {
-        guard notes[noteID] != nil else { return }
-        // Note is a reference type shared with AppState — already mutated by caller
+        guard let note = notes[noteID] else { return }
+        note.body = body
+        note.modifiedDate = Date()
+        note.invalidateSearchCache()
         markDirty(noteID)
     }
 
+    /// Applies `tags` and marks the note dirty. See `updateBody` on why this
+    /// assigns rather than relying on the caller having mutated the note.
     public func updateTags(noteID: UUID, tags: [String]) {
-        guard notes[noteID] != nil else { return }
-        // Note is a reference type shared with AppState — already mutated by caller
+        guard let note = notes[noteID] else { return }
+        note.tags = tags
+        note.modifiedDate = Date()
+        note.invalidateSearchCache()
         markDirty(noteID)
     }
 
