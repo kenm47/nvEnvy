@@ -336,6 +336,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         NSApp.servicesProvider = servicesProvider
         NSUpdateDynamicServices()
+
+        KeyboardShortcuts.onKeyUp(for: .activateApp) { [weak self] in
+            self?.toggleActivation()
+        }
+    }
+
+    /// Global hotkey: bring nvEnvy up with the search field focused, or hide it
+    /// again if it is already frontmost.
+    private func toggleActivation() {
+        if NSApp.isActive {
+            NSApp.hide(nil)
+            return
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        for window in NSApp.windows where window.identifier?.rawValue != "preview" && window.identifier?.rawValue != "about" {
+            window.makeKeyAndOrderFront(nil)
+        }
+        NotificationCenter.default.post(name: .nvEnvyFocusSearchField, object: nil)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
