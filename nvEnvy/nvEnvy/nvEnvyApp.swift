@@ -305,6 +305,13 @@ enum FormattingCommand {
     case bold, italic, strikethrough, indent, outdent
 }
 
+enum MainWindow {
+    /// Set on the note window by `WindowAccessor` in MainView, and used to pick
+    /// that window back out of `NSApp.windows`. The Settings, preview and about
+    /// scenes are separate windows that must not be mistaken for it.
+    static let autosaveName = "nvEnvyMainWindow"
+}
+
 extension Notification.Name {
     static let nvEnvyFormatting = Notification.Name("nvEnvyFormatting")
     static let nvEnvyShowTagEditor = Notification.Name("nvEnvyShowTagEditor")
@@ -342,18 +349,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Global hotkey: bring nvEnvy up with the search field focused, or hide it
-    /// again if it is already frontmost.
+    /// Global hotkey: bring the note window up with the search field focused, or
+    /// hide the app if that window is already frontmost. Hiding is gated on the
+    /// note window specifically, so the hotkey pulls it forward rather than
+    /// hiding everything when Settings or the preview window happens to be key.
     private func toggleActivation() {
-        if NSApp.isActive {
+        let note = noteWindow()
+        if NSApp.isActive, note?.isKeyWindow == true {
             NSApp.hide(nil)
             return
         }
         NSApp.activate(ignoringOtherApps: true)
-        for window in NSApp.windows where window.identifier?.rawValue != "preview" && window.identifier?.rawValue != "about" {
-            window.makeKeyAndOrderFront(nil)
-        }
+        note?.makeKeyAndOrderFront(nil)
         NotificationCenter.default.post(name: .nvEnvyFocusSearchField, object: nil)
+    }
+
+    /// The note window, identified by the autosave name MainView stamps on it.
+    /// Falls back to the first ordinary content window so a note window that
+    /// somehow lost its tag still wins over Settings, preview and about.
+    private func noteWindow() -> NSWindow? {
+        if let tagged = NSApp.windows.first(where: { $0.frameAutosaveName == MainWindow.autosaveName }) {
+            return tagged
+        }
+        return NSApp.windows.first { window in
+            guard window.canBecomeMain, !(window is NSPanel) else { return false }
+            let id = window.identifier?.rawValue ?? ""
+            return id != "preview" && id != "about" && !id.localizedCaseInsensitiveContains("settings")
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
