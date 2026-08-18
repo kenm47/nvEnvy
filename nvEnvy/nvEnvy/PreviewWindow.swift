@@ -8,6 +8,8 @@ struct PreviewWindow: View {
     @State private var stickyMode = false
     @State private var renderedHTML: String = ""
     @State private var debounceTask: Task<Void, Never>?
+    @State private var cachedCustomCSS: String?
+    @State private var customCSSLastLoaded: Date?
 
     private var noteID: Note.ID? {
         stickyMode ? appState.previewStickyNoteID : appState.selectedNoteID
@@ -104,10 +106,21 @@ struct PreviewWindow: View {
         renderedHTML = MarkdownRenderer.renderHTML(from: note.body, title: note.title, customCSS: customCSS)
     }
 
+    /// Caches the loaded CSS for up to 5s so re-rendering on the preview's
+    /// 300ms typing debounce doesn't do synchronous disk I/O on every
+    /// keystroke. Users editing `custom.css` in an external editor still see
+    /// the change within a few seconds.
     private func loadCustomCSS() -> String? {
+        let now = Date()
+        if let lastLoaded = customCSSLastLoaded, now.timeIntervalSince(lastLoaded) < 5 {
+            return cachedCustomCSS
+        }
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        guard let cssURL = appSupport?.appendingPathComponent("nvEnvy/custom.css"),
-              let css = try? String(contentsOf: cssURL, encoding: .utf8) else { return nil }
+        let css = appSupport
+            .map { $0.appendingPathComponent("nvEnvy/custom.css") }
+            .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+        cachedCustomCSS = css
+        customCSSLastLoaded = now
         return css
     }
 
@@ -156,14 +169,29 @@ struct PreviewWindow: View {
 struct PreviewWebView: NSViewRepresentable {
     let html: String
 
+    final class Coordinator {
+        var lastLoadedHTML: String?
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.loadHTMLString(html, baseURL: nil)
+        context.coordinator.lastLoadedHTML = html
         return webView
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
+        // The 300ms preview debounce fires on cursor movement and no-op
+        // edits too, not just body changes -- skip the reload (DOM teardown,
+        // CSS re-parse, scroll reset, visible white flash) when the rendered
+        // HTML hasn't actually changed.
+        guard html != context.coordinator.lastLoadedHTML else { return }
         webView.loadHTMLString(html, baseURL: nil)
+        context.coordinator.lastLoadedHTML = html
     }
 }

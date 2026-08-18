@@ -49,6 +49,12 @@ public enum FrontmatterParser {
     // MARK: - Parse
 
     public static func parse(_ content: String) -> ParsedNote {
+        // Fast path: no frontmatter delimiter means nothing to parse. Avoids
+        // splitting the whole document into lines just to discard them.
+        guard content.hasPrefix("---") || content.hasPrefix(" ") || content.hasPrefix("\t") else {
+            return ParsedNote(body: content)
+        }
+
         let lines = content.components(separatedBy: "\n")
 
         guard !lines.isEmpty, lines[0].trimmingCharacters(in: .whitespaces) == "---" else {
@@ -217,9 +223,7 @@ public enum FrontmatterParser {
     }
 
     private static func formatDate(_ date: Date) -> String {
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withInternetDateTime]
-        return iso.string(from: date)
+        isoFormatter.string(from: date)
     }
 
     private static func serializeField(key: String, value: Any) -> String {

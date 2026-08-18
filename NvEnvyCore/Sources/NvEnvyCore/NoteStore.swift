@@ -233,6 +233,10 @@ public actor NoteStore {
     /// changed, so the caller can skip reassigning its notes snapshot when
     /// nothing did (e.g. the events were all our own autosaves).
     public func reconcilePaths(_ absolutePaths: [String]) async -> Bool {
+        let signposter = PerformanceTelemetry.signposter
+        let state = signposter.beginInterval("reconcilePaths")
+        defer { signposter.endInterval("reconcilePaths", state) }
+
         var changed = false
         var seenFilenames = Set<String>()
 

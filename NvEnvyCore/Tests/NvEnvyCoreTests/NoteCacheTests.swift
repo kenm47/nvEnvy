@@ -46,4 +46,25 @@ final class NoteCacheTests: XCTestCase {
             XCTAssertEqual(Note.firstLine(of: body), legacy, "mismatch for body \(body.debugDescription)")
         }
     }
+
+    // MARK: - cachedModifiedString (P4)
+
+    func testCachedModifiedStringPopulatedAtInit() {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let note = Note(title: "T", modifiedDate: date)
+        XCTAssertEqual(note.cachedModifiedString, date.formatted(rowModifiedDateStyle))
+    }
+
+    func testCachedModifiedStringRefreshedByInvalidateSearchCache() {
+        let original = Date(timeIntervalSince1970: 1_700_000_000)
+        let note = Note(title: "T", modifiedDate: original)
+        let updated = Date(timeIntervalSince1970: 1_800_000_000)
+
+        note.modifiedDate = updated
+        // Not refreshed yet -- only the eager `modifiedDate` assignment happened.
+        XCTAssertEqual(note.cachedModifiedString, original.formatted(rowModifiedDateStyle))
+
+        note.invalidateSearchCache()
+        XCTAssertEqual(note.cachedModifiedString, updated.formatted(rowModifiedDateStyle))
+    }
 }

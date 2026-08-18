@@ -233,6 +233,21 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertTrue(contents.contains("unsaved edit"), "flushBeforeQuit must persist the pending debounced edit")
     }
 
+    // MARK: - updateNoteBody() assigns modifiedDate synchronously (P4)
+
+    func testUpdateNoteBody_assignsModifiedDateSynchronously_notDeferredToDebounce() {
+        let old = Date(timeIntervalSince1970: 1_000_000)
+        let note = Note(title: "T", body: "old", modifiedDate: old)
+        seedAllNotes([note])
+
+        vm.updateNoteBody(noteID: note.id, body: "new")
+
+        // Must be updated immediately -- if the user types and then
+        // immediately switches notes or quits, the debounced task is
+        // cancelled and would never run.
+        XCTAssertGreaterThan(note.modifiedDate, old)
+    }
+
     // MARK: - Helpers
 
     private func seedAllNotes(_ notes: [Note]) {

@@ -11,7 +11,9 @@ public actor SearchActor {
     public init() {}
 
     public func filter(notes: [Note], query: String) -> [Note] {
-        engine.filter(notes: notes, query: query)
+        PerformanceTelemetry.signposter.withIntervalSignpost("SearchActor.filter") {
+            engine.filter(notes: notes, query: query)
+        }
     }
 }
 
@@ -42,24 +44,43 @@ public struct SearchEngine: Sendable {
 
         let tokens = tokenize(lowercaseQuery)
 
-        let results = workingSet.filter { note in
+        // Sort by relevance: exact title match first, then title contains,
+        // then body/tag only. Bucket by tier during the single match pass
+        // instead of recomputing each note's tier ~2 log N times inside a
+        // sort comparator.
+        var tier0Exact: [Note] = []
+        var tier1Title: [Note] = []
+        var tier2Other: [Note] = []
+
+        for note in workingSet {
+            var matchesAllTokens = true
+            var allTokensInTitle = true
             for token in tokens {
-                let matchesTitle = note.cachedLowercaseTitle.contains(token)
-                let matchesBody = note.cachedLowercaseBody.contains(token)
-                let matchesTags = note.cachedLowercaseTags.contains(token)
-                if !matchesTitle && !matchesBody && !matchesTags {
-                    return false
+                let inTitle = note.cachedLowercaseTitle.contains(token)
+                if !inTitle { allTokensInTitle = false }
+                if !inTitle
+                    && !note.cachedLowercaseBody.contains(token)
+                    && !note.cachedLowercaseTags.contains(token) {
+                    matchesAllTokens = false
+                    break
                 }
             }
-            return true
+            guard matchesAllTokens else { continue }
+
+            if note.cachedLowercaseTitle == lowercaseQuery {
+                tier0Exact.append(note)
+            } else if allTokensInTitle {
+                tier1Title.append(note)
+            } else {
+                tier2Other.append(note)
+            }
         }
 
-        // Sort by relevance: exact title match first, then title contains, then body/tag only
-        let sorted = results.sorted { a, b in
-            let tierA = relevanceTier(note: a, query: lowercaseQuery, tokens: tokens)
-            let tierB = relevanceTier(note: b, query: lowercaseQuery, tokens: tokens)
-            return tierA < tierB
-        }
+        var sorted: [Note] = []
+        sorted.reserveCapacity(tier0Exact.count + tier1Title.count + tier2Other.count)
+        sorted.append(contentsOf: tier0Exact)
+        sorted.append(contentsOf: tier1Title)
+        sorted.append(contentsOf: tier2Other)
 
         previousQuery = lowercaseQuery
         previousResults = sorted
@@ -78,14 +99,6 @@ public struct SearchEngine: Sendable {
         guard !query.isEmpty else { return nil }
         let lowerQuery = query.lowercased()
         return notes.first { $0.cachedLowercaseTitle.hasPrefix(lowerQuery) }
-    }
-
-    /// Returns 0 for exact title match, 1 for title contains, 2 for body/tag only.
-    private func relevanceTier(note: Note, query: String, tokens: [String]) -> Int {
-        if note.cachedLowercaseTitle == query { return 0 }
-        let allInTitle = tokens.allSatisfy { note.cachedLowercaseTitle.contains($0) }
-        if allInTitle { return 1 }
-        return 2
     }
 
     private func tokenize(_ query: String) -> [String] {

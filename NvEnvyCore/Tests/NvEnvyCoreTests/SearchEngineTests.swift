@@ -41,6 +41,17 @@ final class SearchEngineTests: XCTestCase {
         XCTAssertEqual(results[0].title, "Note A")
     }
 
+    func testTitleMatchRanksAboveBodyOnlyMatch() {
+        let notes = [
+            Note(title: "Note A", body: "Mentions swift only in the body"),
+            Note(title: "Swift Note B"),
+        ]
+        let results = engine.filter(notes: notes, query: "swift")
+        XCTAssertEqual(results.count, 2)
+        XCTAssertEqual(results[0].title, "Swift Note B")
+        XCTAssertEqual(results[1].title, "Note A")
+    }
+
     func testTagMatch() {
         let notes = [
             Note(title: "Note A", tags: ["swift", "ios"]),

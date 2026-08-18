@@ -67,6 +67,25 @@ final class CrashRecoveryServiceTests: XCTestCase {
         XCTAssertEqual(recovered.count, 0)
     }
 
+    func testAppendTruncateAppendRecover() async throws {
+        // Guards the persistent-FileHandle change (P7): truncate() must close
+        // the handle before replacing the file, or a later append would land
+        // at a bogus offset into an unlinked/truncated inode instead of the
+        // fresh file.
+        let before = Note(title: "Before Truncate", body: "stale")
+        try await service.appendRecord(note: before)
+        try await service.truncate()
+
+        let after = Note(title: "After Truncate", body: "fresh")
+        try await service.appendRecord(note: after)
+
+        let recovered = try await service.recoverPendingNotes()
+        XCTAssertEqual(recovered.count, 1)
+        XCTAssertEqual(recovered[0].noteID, after.id)
+        XCTAssertEqual(recovered[0].title, "After Truncate")
+        XCTAssertEqual(recovered[0].body, "fresh")
+    }
+
     func testRecoverEmptyWAL() async throws {
         let recovered = try await service.recoverPendingNotes()
         XCTAssertEqual(recovered.count, 0)

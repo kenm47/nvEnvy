@@ -39,4 +39,38 @@ final class SyncStatusTests: XCTestCase {
         let fetched = await store.note(for: note.id)
         XCTAssertEqual(fetched?.syncStatus, .uploading)
     }
+
+    // MARK: - NotesViewModel.conflictedNotes precomputation (P5b)
+
+    @MainActor
+    func testConflictedNotesTracksSyncStatusMutations() {
+        let vm = NotesViewModel()
+        let a = Note(title: "A", filename: "A")
+        let b = Note(title: "B", filename: "B")
+        vm.allNotes = [a, b]
+        XCTAssertEqual(vm.conflictedNotes, [])
+
+        vm.updateSyncStatus(filename: "A", status: .conflict)
+        XCTAssertEqual(vm.conflictedNotes, [a])
+
+        vm.updateSyncStatuses(["B": .conflict])
+        XCTAssertEqual(Set(vm.conflictedNotes), Set([a, b]))
+
+        vm.updateSyncStatus(filename: "A", status: .current)
+        XCTAssertEqual(vm.conflictedNotes, [b])
+    }
+
+    @MainActor
+    func testConflictedNotesRebuiltWhenAllNotesReassigned() {
+        let vm = NotesViewModel()
+        let a = Note(title: "A", filename: "A")
+        a.syncStatus = .conflict
+        vm.allNotes = [a]
+        XCTAssertEqual(vm.conflictedNotes, [a])
+
+        // A fresh load (e.g. reconciliation) replaces `allNotes` wholesale --
+        // the precomputed list must reflect the new snapshot, not the old one.
+        vm.allNotes = []
+        XCTAssertEqual(vm.conflictedNotes, [])
+    }
 }

@@ -62,6 +62,49 @@ final class FrontmatterParserTests: XCTestCase {
         XCTAssertEqual(result.body, content)
     }
 
+    // MARK: - P3 early-out regression guards
+
+    func testBodyWithHorizontalRuleNotTreatedAsFrontmatter() {
+        let content = "Some intro text\n\n---\n\nMore text after a horizontal rule."
+        let result = FrontmatterParser.parse(content)
+        XCTAssertNil(result.frontmatter)
+        XCTAssertEqual(result.body, content)
+    }
+
+    func testFourDashDelimiterIsNotFrontmatterClose() {
+        let content = "---\ntags:\n  - test\n----\nBody text"
+        let result = FrontmatterParser.parse(content)
+        // No line is exactly "---" after the opener, so there's no valid close.
+        XCTAssertNil(result.frontmatter)
+        XCTAssertEqual(result.body, content)
+    }
+
+    func testBodyLeadingBlankLinesPreserved() {
+        let content = "---\ntags:\n  - test\n---\n\n\nText after two blank lines."
+        let result = FrontmatterParser.parse(content)
+        XCTAssertEqual(result.body, "\n\nText after two blank lines.")
+    }
+
+    func testBodyLeadingIndentationPreserved() {
+        let content = "---\ntags:\n  - test\n---\n    indented code block\nmore text"
+        let result = FrontmatterParser.parse(content)
+        XCTAssertEqual(result.body, "    indented code block\nmore text")
+    }
+
+    func testLeadingWhitespaceBeforeOpeningDelimiter() {
+        let content = "  ---\ntags: [a]\n---\nbody"
+        let result = FrontmatterParser.parse(content)
+        XCTAssertEqual(result.frontmatter?.tags, ["a"])
+        XCTAssertEqual(result.body, "body")
+    }
+
+    func testFrontmatterInsideCodeFence() {
+        let content = "Some text\n```\n---\nnot frontmatter\n---\n```\nMore text"
+        let result = FrontmatterParser.parse(content)
+        XCTAssertNil(result.frontmatter)
+        XCTAssertEqual(result.body, content)
+    }
+
     // MARK: - Round-Trip Tests
 
     func testRoundTripWithTags() {

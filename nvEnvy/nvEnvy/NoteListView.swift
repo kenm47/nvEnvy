@@ -38,42 +38,52 @@ struct NoteListView: View {
                 }
                 .frame(maxWidth: .infinity)
             } else {
-                List(selection: $selectedNoteID) {
-                    if showCreateRow {
-                        Button {
-                            appState.createOrSelectNote()
-                        } label: {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundStyle(.tint)
-                                Text("Create \"\(trimmedQuery)\"")
-                                Spacer()
+                ScrollViewReader { scrollProxy in
+                    List(selection: $selectedNoteID) {
+                        if showCreateRow {
+                            Button {
+                                appState.createOrSelectNote()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundStyle(.tint)
+                                    Text("Create \"\(trimmedQuery)\"")
+                                    Spacer()
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        ForEach(sortedNotes) { note in
+                            Group {
+                                if appState.noteListDisplayMode == .preview {
+                                    NotePreviewRow(note: note, appState: appState)
+                                } else {
+                                    NoteRow(note: note, appState: appState)
+                                }
+                            }
+                            .tag(note.id)
+                            .contextMenu {
+                                rowContextMenu(for: note)
                             }
                         }
-                        .buttonStyle(.plain)
                     }
-                    ForEach(sortedNotes) { note in
-                        Group {
-                            if appState.noteListDisplayMode == .preview {
-                                NotePreviewRow(note: note, appState: appState)
-                            } else {
-                                NoteRow(note: note, appState: appState)
-                            }
-                        }
-                        .tag(note.id)
-                        .contextMenu {
-                            rowContextMenu(for: note)
-                        }
+                    .listStyle(.inset)
+                    .alternatingRowBackgrounds(appState.alternatingRowColors ? .enabled : .disabled)
+                    .onDrop(of: [.plainText, .rtf, .html, .fileURL], isTargeted: nil) { providers in
+                        handleDrop(providers)
+                        return true
                     }
-                }
-                .listStyle(.inset)
-                .alternatingRowBackgrounds(appState.alternatingRowColors ? .enabled : .disabled)
-                .onDrop(of: [.plainText, .rtf, .html, .fileURL], isTargeted: nil) { providers in
-                    handleDrop(providers)
-                    return true
-                }
-                .contextMenu {
-                    columnVisibilityMenu
+                    .contextMenu {
+                        columnVisibilityMenu
+                    }
+                    // Search results narrow/reflow the list without resetting
+                    // scroll position, so the row that ends up selected (e.g.
+                    // via Enter -> createOrSelectNote()) can land just outside
+                    // the visible area. Bring it back into view on selection.
+                    .onChange(of: selectedNoteID) { _, newValue in
+                        guard let newValue else { return }
+                        scrollProxy.scrollTo(newValue, anchor: .top)
+                    }
                 }
             }
 
@@ -214,29 +224,23 @@ struct NoteListView: View {
 
 // MARK: - Row Views
 
-// Reused across all rows: constructing a FormatStyle per render is a
-// measurable per-row cost in long lists.
-private let rowModifiedDateStyle = Date.FormatStyle(date: .abbreviated, time: .shortened)
-private let rowRelativeDateStyle = Date.RelativeFormatStyle(presentation: .named)
-
 struct NoteRow: View {
     let note: Note
     let appState: AppState
 
     var body: some View {
-        let modifiedString = note.modifiedDate.formatted(rowModifiedDateStyle)
         HStack {
             InlineNoteTitle(note: note, appState: appState,
                             font: .system(size: appState.tableFontSize))
             SyncStatusIcon(status: note.syncStatus)
             Spacer()
-            Text(modifiedString)
+            Text(note.cachedModifiedString)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(note.title), modified \(modifiedString)")
+        .accessibilityLabel("\(note.title), modified \(note.cachedModifiedString)")
     }
 }
 
@@ -273,7 +277,7 @@ struct NotePreviewRow: View {
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(note.title), \(note.tags.isEmpty ? "" : "tags: \(note.tags.joined(separator: ", ")), ")modified \(note.modifiedDate.formatted(rowRelativeDateStyle))")
+        .accessibilityLabel("\(note.title), \(note.tags.isEmpty ? "" : "tags: \(note.tags.joined(separator: ", ")), ")modified \(note.cachedModifiedString)")
     }
 }
 

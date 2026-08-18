@@ -32,6 +32,15 @@ public final class Note: Identifiable, @unchecked Sendable {
     // preview rows. Cached so each row render avoids splitting the whole body.
     @ObservationIgnored public var cachedFirstLine: String
 
+    // List-render optimization: pre-formatted modified-date string. Not
+    // observed, so per-keystroke `modifiedDate` churn does not invalidate rows.
+    // Refreshed by `invalidateSearchCache()` (i.e. on the 500ms edit debounce).
+    // Known limitation, accepted rather than handled: if the user changes
+    // system locale while the app is running, this string goes stale until
+    // the note is next edited or reloaded. Not observed to matter in practice
+    // (locale changes require leaving the app), and out of scope here.
+    @ObservationIgnored public var cachedModifiedString: String
+
     public init(
         id: UUID = UUID(),
         title: String,
@@ -54,6 +63,7 @@ public final class Note: Identifiable, @unchecked Sendable {
         self.cachedLowercaseBody = body.lowercased()
         self.cachedLowercaseTags = tags.joined(separator: " ").lowercased()
         self.cachedFirstLine = Note.firstLine(of: body)
+        self.cachedModifiedString = modifiedDate.formatted(rowModifiedDateStyle)
     }
 
     public func invalidateSearchCache() {
@@ -61,6 +71,7 @@ public final class Note: Identifiable, @unchecked Sendable {
         cachedLowercaseBody = body.lowercased()
         cachedLowercaseTags = tags.joined(separator: " ").lowercased()
         cachedFirstLine = Note.firstLine(of: body)
+        cachedModifiedString = modifiedDate.formatted(rowModifiedDateStyle)
     }
 
     /// First non-empty line of `body` (leading/trailing whitespace and blank

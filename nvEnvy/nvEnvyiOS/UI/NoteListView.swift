@@ -162,7 +162,7 @@ struct NoteListView: View {
                     .lineLimit(1)
                 SyncStatusIcon(status: note.syncStatus)
             }
-            Text(note.modifiedDate, style: .date)
+            Text(note.cachedModifiedString)
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if !note.tags.isEmpty {
@@ -180,7 +180,7 @@ struct NoteListView: View {
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(note.title), modified \(note.modifiedDate.formatted(date: .abbreviated, time: .omitted))")
+        .accessibilityLabel("\(note.title), modified \(note.cachedModifiedString)")
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 requestDelete(note.id)

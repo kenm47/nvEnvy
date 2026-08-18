@@ -14,10 +14,21 @@ public struct RecoveredNote: Sendable {
 public actor CrashRecoveryService {
     private let walURL: URL
     private let fileManager = FileManager.default
+    private static let encoder = JSONEncoder()
+
+    /// Kept open across `appendRecord` calls instead of open/seek/write/close
+    /// per call. `FileHandle.write` is an unbuffered `write(2)`, so durability
+    /// is unchanged by keeping it open -- writes still land immediately, just
+    /// without the per-call open/close syscalls.
+    private var activeHandle: FileHandle?
 
     public init(cacheDirectory: URL? = nil) {
         let cacheDir = cacheDirectory ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!.appendingPathComponent("com.nvenvy.app")
         self.walURL = cacheDir.appendingPathComponent("wal.bin")
+    }
+
+    deinit {
+        try? activeHandle?.close()
     }
 
     private func ensureDirectory() throws {
@@ -40,7 +51,7 @@ public actor CrashRecoveryService {
             timestamp: Date()
         )
 
-        let jsonData = try JSONEncoder().encode(payload)
+        let jsonData = try Self.encoder.encode(payload)
         let compressed = try Self.compress(jsonData)
         let crc = Self.crc32Checksum(compressed)
 
@@ -53,14 +64,21 @@ public actor CrashRecoveryService {
         record.append(Data(bytes: &checksum, count: 4))
         record.append(compressed)
 
-        if fileManager.fileExists(atPath: walURL.path) {
-            let handle = try FileHandle(forWritingTo: walURL)
-            handle.seekToEndOfFile()
-            handle.write(record)
-            handle.closeFile()
-        } else {
-            try record.write(to: walURL)
+        let handle = try activeWriteHandle()
+        handle.write(record)
+    }
+
+    /// Returns the persistent write handle, opening (and creating the file
+    /// and seeking to its end) on first use or after `truncate()` closed it.
+    private func activeWriteHandle() throws -> FileHandle {
+        if let activeHandle { return activeHandle }
+        if !fileManager.fileExists(atPath: walURL.path) {
+            fileManager.createFile(atPath: walURL.path, contents: nil)
         }
+        let handle = try FileHandle(forWritingTo: walURL)
+        handle.seekToEndOfFile()
+        activeHandle = handle
+        return handle
     }
 
     // MARK: - Recovery
@@ -121,6 +139,11 @@ public actor CrashRecoveryService {
     // MARK: - Cleanup
 
     public func truncate() throws {
+        // Close the persistent handle before replacing the file -- an open
+        // handle after `Data().write(to:)` swaps the inode out from under it
+        // would keep appending into an unlinked file instead of the new one.
+        try activeHandle?.close()
+        activeHandle = nil
         guard fileManager.fileExists(atPath: walURL.path) else { return }
         try Data().write(to: walURL)
     }

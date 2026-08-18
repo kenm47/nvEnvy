@@ -18,7 +18,17 @@ public final class NotesViewModel {
         didSet {
             _cachedKnownTags = nil
             rebuildNotesByID()
+            rebuildConflictedNotes()
         }
+    }
+
+    /// Notes currently in `.conflict` sync status, precomputed so the iOS
+    /// `ConflictBanner` (installed as a `safeAreaInset` on the note list) does
+    /// not filter the whole vault on every list re-render.
+    public private(set) var conflictedNotes: [Note] = []
+
+    private func rebuildConflictedNotes() {
+        conflictedNotes = allNotes.filter { $0.syncStatus == .conflict }
     }
     public var filteredNotes: [Note] = [] {
         didSet { rebuildSortedNotes() }
@@ -166,6 +176,10 @@ public final class NotesViewModel {
     /// newer query has superseded this one while filtering was in flight, so a
     /// slow search can't overwrite the list with stale results.
     private func performSearch() async {
+        let signposter = PerformanceTelemetry.signposter
+        let state = signposter.beginInterval("performSearch")
+        defer { signposter.endInterval("performSearch", state) }
+
         let query = searchQuery
         let snapshot = allNotes
         let results = await searchActor.filter(notes: snapshot, query: query)
@@ -214,6 +228,10 @@ public final class NotesViewModel {
     }
 
     private func rebuildSortedNotes() {
+        let signposter = PerformanceTelemetry.signposter
+        let state = signposter.beginInterval("rebuildSortedNotes")
+        defer { signposter.endInterval("rebuildSortedNotes", state) }
+
         updateShowCreateRow()
         // When a search is active, preserve the relevance ordering from SearchEngine
         if !searchQuery.isEmpty {
@@ -543,6 +561,7 @@ public final class NotesViewModel {
             changed[filename] = status
         }
         guard !changed.isEmpty else { return }
+        rebuildConflictedNotes()
         Task {
             await noteStore?.updateSyncStatuses(changed)
         }

@@ -34,11 +34,8 @@ struct ConflictBanner: View {
     @Environment(NotesViewModel.self) private var notesVM
     @State private var showConflictSheet = false
 
-    private var conflictedNotes: [Note] {
-        notesVM.allNotes.filter { $0.syncStatus == .conflict }
-    }
-
     var body: some View {
+        let conflictedNotes = notesVM.conflictedNotes
         if !conflictedNotes.isEmpty {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -65,11 +62,8 @@ struct ConflictListView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedNote: Note?
 
-    private var conflictedNotes: [Note] {
-        notesVM.allNotes.filter { $0.syncStatus == .conflict }
-    }
-
     var body: some View {
+        let conflictedNotes = notesVM.conflictedNotes
         NavigationStack {
             Group {
                 if conflictedNotes.isEmpty {

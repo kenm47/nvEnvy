@@ -172,6 +172,11 @@ public actor FileStorageService {
     }
 
     public func readAllNotes() async throws -> [Note] {
+        let signposter = PerformanceTelemetry.signposter
+        let state = signposter.beginInterval("readAllNotes")
+        var noteCount = 0
+        defer { signposter.endInterval("readAllNotes", state, "\(noteCount) notes") }
+
         let exts = allowedExtensions
         let urls: [URL] = try coordinator.coordinate(readingItemAt: notesDirectory) { dir in
             guard let enumerator = self.fileManager.enumerator(
@@ -222,6 +227,7 @@ public actor FileStorageService {
             for await partial in group {
                 all.append(contentsOf: partial)
             }
+            noteCount = all.count
             return all
         }
     }

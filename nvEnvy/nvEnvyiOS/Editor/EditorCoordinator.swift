@@ -323,23 +323,15 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
 
     func highlightSearchTerms(in textView: UITextView) {
         let textStorage = textView.textStorage
-        let text = textView.text ?? ""
-        let fullRange = NSRange(location: 0, length: (text as NSString).length)
+        let text = (textView.text ?? "") as NSString
+        let fullRange = NSRange(location: 0, length: text.length)
 
         textStorage.removeAttribute(.backgroundColor, range: fullRange)
 
         guard prefs.searchHighlight, !notesVM.searchQuery.isEmpty else { return }
 
-        let query = notesVM.searchQuery.lowercased()
-        let nsText = text.lowercased() as NSString
-
-        var searchRange = NSRange(location: 0, length: nsText.length)
-        while searchRange.location < nsText.length {
-            let foundRange = nsText.range(of: query, options: [], range: searchRange)
-            guard foundRange.location != NSNotFound else { break }
+        for foundRange in SearchHighlighting.matchRanges(in: text, query: notesVM.searchQuery) {
             textStorage.addAttribute(.backgroundColor, value: Self.searchHighlightColor, range: foundRange)
-            searchRange.location = foundRange.location + foundRange.length
-            searchRange.length = nsText.length - searchRange.location
         }
     }
 

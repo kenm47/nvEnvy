@@ -432,25 +432,17 @@ struct NoteTextEditor: NSViewRepresentable {
 
         func highlightSearchTerms(in textView: NSTextView) {
             guard let textStorage = textView.textStorage else { return }
-            let text = textView.string
-            let fullRange = NSRange(location: 0, length: (text as NSString).length)
+            let text = textView.string as NSString
+            let fullRange = NSRange(location: 0, length: text.length)
 
             textStorage.removeAttribute(.backgroundColor, range: fullRange)
 
             guard appState.searchHighlightEnabled,
                   !appState.searchQuery.isEmpty else { return }
 
-            let query = appState.searchQuery.lowercased()
-            let nsText = text.lowercased() as NSString
             let color = appState.searchHighlightColor
-
-            var searchRange = NSRange(location: 0, length: nsText.length)
-            while searchRange.location < nsText.length {
-                let foundRange = nsText.range(of: query, options: [], range: searchRange)
-                guard foundRange.location != NSNotFound else { break }
+            for foundRange in SearchHighlighting.matchRanges(in: text, query: appState.searchQuery) {
                 textStorage.addAttribute(.backgroundColor, value: color, range: foundRange)
-                searchRange.location = foundRange.location + foundRange.length
-                searchRange.length = nsText.length - searchRange.location
             }
         }
 
