@@ -79,10 +79,13 @@ struct NoteListView: View {
                     // Search results narrow/reflow the list without resetting
                     // scroll position, so the row that ends up selected (e.g.
                     // via Enter -> createOrSelectNote()) can land just outside
-                    // the visible area. Bring it back into view on selection.
+                    // the visible area. `anchor: nil` scrolls the minimum
+                    // distance needed to bring it fully into view -- a no-op
+                    // if it's already visible (e.g. a direct row click), so
+                    // this doesn't force every selection to the top.
                     .onChange(of: selectedNoteID) { _, newValue in
                         guard let newValue else { return }
-                        scrollProxy.scrollTo(newValue, anchor: .top)
+                        scrollProxy.scrollTo(newValue, anchor: nil)
                     }
                 }
             }
