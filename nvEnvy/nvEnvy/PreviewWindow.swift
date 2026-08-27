@@ -149,7 +149,7 @@ struct PreviewWindow: View {
     private func openInMarked() {
         guard let note = note,
               let folderURL = appState.notesFolderURL else { return }
-        let fileURL = folderURL.appendingPathComponent(note.filename + ".md")
+        let fileURL = folderURL.appendingPathComponent(note.filename)
 
         // Try Marked 2 first, then Marked
         let markedBundles = ["com.brettterpstra.marked2", "com.brettterpstra.marked"]

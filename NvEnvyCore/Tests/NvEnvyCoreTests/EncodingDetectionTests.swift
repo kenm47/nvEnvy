@@ -33,7 +33,7 @@ final class EncodingDetectionTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let storage = FileStorageService(notesDirectory: tempDir)
-        let note = Note(title: "UTF8Test", body: "Héllo wörld", filename: "UTF8Test")
+        let note = Note(title: "UTF8Test", body: "Héllo wörld", filename: "UTF8Test.md")
         try await storage.writeNote(note)
 
         let notes = try await storage.readAllNotes()

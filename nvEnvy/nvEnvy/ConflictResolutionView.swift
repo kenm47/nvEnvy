@@ -179,7 +179,7 @@ struct ConflictResolutionView: View {
 
     private func loadConflictVersions() {
         guard let folderURL = appState.notesFolderURL else { return }
-        let fileURL = folderURL.appendingPathComponent(note.filename + ".md")
+        let fileURL = folderURL.appendingPathComponent(note.filename)
 
         guard let versions = NSFileVersion.unresolvedConflictVersionsOfItem(at: fileURL) else { return }
 
@@ -196,7 +196,7 @@ struct ConflictResolutionView: View {
 
     private func resolveKeepCurrent() {
         guard let folderURL = appState.notesFolderURL else { return }
-        let fileURL = folderURL.appendingPathComponent(note.filename + ".md")
+        let fileURL = folderURL.appendingPathComponent(note.filename)
         try? NSFileVersion.removeOtherVersionsOfItem(at: fileURL)
         if let versions = NSFileVersion.unresolvedConflictVersionsOfItem(at: fileURL) {
             for version in versions { version.isResolved = true }

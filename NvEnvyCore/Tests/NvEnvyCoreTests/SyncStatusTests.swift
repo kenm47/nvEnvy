@@ -45,25 +45,25 @@ final class SyncStatusTests: XCTestCase {
     @MainActor
     func testConflictedNotesTracksSyncStatusMutations() {
         let vm = NotesViewModel()
-        let a = Note(title: "A", filename: "A")
-        let b = Note(title: "B", filename: "B")
+        let a = Note(title: "A", filename: "A.md")
+        let b = Note(title: "B", filename: "B.md")
         vm.allNotes = [a, b]
         XCTAssertEqual(vm.conflictedNotes, [])
 
-        vm.updateSyncStatus(filename: "A", status: .conflict)
+        vm.updateSyncStatus(filename: "A.md", status: .conflict)
         XCTAssertEqual(vm.conflictedNotes, [a])
 
-        vm.updateSyncStatuses(["B": .conflict])
+        vm.updateSyncStatuses(["B.md": .conflict])
         XCTAssertEqual(Set(vm.conflictedNotes), Set([a, b]))
 
-        vm.updateSyncStatus(filename: "A", status: .current)
+        vm.updateSyncStatus(filename: "A.md", status: .current)
         XCTAssertEqual(vm.conflictedNotes, [b])
     }
 
     @MainActor
     func testConflictedNotesRebuiltWhenAllNotesReassigned() {
         let vm = NotesViewModel()
-        let a = Note(title: "A", filename: "A")
+        let a = Note(title: "A", filename: "A.md")
         a.syncStatus = .conflict
         vm.allNotes = [a]
         XCTAssertEqual(vm.conflictedNotes, [a])

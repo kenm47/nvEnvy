@@ -96,7 +96,7 @@ struct ContentView: View {
         guard let id = appState.selectedNoteID,
               let note = appState.note(for: id),
               let folderURL = appState.notesFolderURL else { return }
-        let fileURL = folderURL.appendingPathComponent(note.filename + ".md")
+        let fileURL = folderURL.appendingPathComponent(note.filename)
         let markedBundles = ["com.brettterpstra.marked2", "com.brettterpstra.marked"]
         for bundleID in markedBundles {
             if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {

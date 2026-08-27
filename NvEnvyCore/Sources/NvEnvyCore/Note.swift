@@ -55,7 +55,7 @@ public final class Note: Identifiable, @unchecked Sendable {
         self.title = title
         self.body = body
         self.tags = tags
-        self.filename = filename.isEmpty ? Note.sanitizedFilename(from: title) : filename
+        self.filename = filename.isEmpty ? Note.sanitizedFilename(from: title) + ".md" : filename
         self.createdDate = createdDate
         self.modifiedDate = modifiedDate
         self.fileEncoding = fileEncoding
@@ -95,6 +95,23 @@ public final class Note: Identifiable, @unchecked Sendable {
             name = "Untitled"
         }
         return name
+    }
+
+    /// Directory portion of `filename`, including a trailing "/", or "" for a
+    /// note at the vault root. "Daily/log.md" -> "Daily/"; "log.md" -> "".
+    public var filenameDirectory: String {
+        guard let slash = filename.lastIndex(of: "/") else { return "" }
+        return String(filename[...slash])
+    }
+
+    /// Extension of `filename`, including the leading ".". Defaults to ".md"
+    /// if `filename` has none (shouldn't normally happen post-load, but keeps
+    /// callers that recombine directory + base + extension well-defined).
+    /// "Daily/log.markdown" -> ".markdown".
+    public var filenameExtension: String {
+        let base = filename.split(separator: "/").last.map(String.init) ?? filename
+        guard let dot = base.lastIndex(of: "."), dot != base.startIndex else { return ".md" }
+        return String(base[dot...])
     }
 }
 

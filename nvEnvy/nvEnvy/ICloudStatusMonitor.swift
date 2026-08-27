@@ -59,11 +59,16 @@ final class ICloudStatusMonitor {
         }
         guard !items.isEmpty else { return }
 
+        // Key on the full vault-relative path (extension included), the same
+        // way `Note.filename` is derived — `lastPathComponent` used to drop
+        // both the extension and any subfolder, so a note like "Daily/log.md"
+        // never matched here and its sync status silently never updated.
+        let basePrefix = FileStorageService.basePrefix(for: notesDirectory)
         var batch: [String: SyncStatus] = [:]
         for item in items {
             guard let path = item.value(forAttribute: NSMetadataItemPathKey) as? String else { continue }
             let url = URL(fileURLWithPath: path)
-            let filename = url.deletingPathExtension().lastPathComponent
+            let filename = FileStorageService.relativeFilename(for: url, basePrefix: basePrefix)
             batch[filename] = syncStatus(for: item, at: url)
         }
         guard !batch.isEmpty else { return }

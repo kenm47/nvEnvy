@@ -223,8 +223,15 @@ public final class NotesViewModel {
     // MARK: - Sorting
 
     private func rebuildNotesByID() {
-        notesByID = Dictionary(uniqueKeysWithValues: allNotes.map { ($0.id, $0) })
-        notesByFilename = Dictionary(uniqueKeysWithValues: allNotes.map { ($0.filename, $0) })
+        // Both maps use `uniquingKeysWith` rather than `uniqueKeysWithValues`:
+        // the keys come from a user-controlled vault directory, and a vault
+        // containing e.g. `Ideas.md` alongside `Ideas.txt` used to trap the
+        // whole app on launch here. `NoteStore.uniqueFilename` now prevents
+        // real collisions among notes nvEnvy creates/renames itself, but this
+        // stays defensive against whatever the user's filesystem contains.
+        // First-wins keeps the result deterministic.
+        notesByID = Dictionary(allNotes.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        notesByFilename = Dictionary(allNotes.map { ($0.filename, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     private func rebuildSortedNotes() {
@@ -357,7 +364,10 @@ public final class NotesViewModel {
         guard let target = note(for: noteID) else { return nil }
         if target.title == trimmed { return nil }
 
-        let newFilename = Note.sanitizedFilename(from: trimmed)
+        // Must match how `NoteStore.updateTitle` actually composes the new
+        // filename (directory + sanitized title + extension), or this
+        // pre-flight check and the real rename can disagree.
+        let newFilename = target.filenameDirectory + Note.sanitizedFilename(from: trimmed) + target.filenameExtension
         let lowerNewFilename = newFilename.lowercased()
         let collides = allNotes.contains { other in
             other.id != noteID && other.filename.lowercased() == lowerNewFilename

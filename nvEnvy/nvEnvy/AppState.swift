@@ -589,13 +589,13 @@ public final class AppState {
     public func revealInFinder(noteID: UUID) {
         guard let note = note(for: noteID),
               let url = notesFolderURL else { return }
-        let fileURL = url.appendingPathComponent(note.filename + ".md")
+        let fileURL = url.appendingPathComponent(note.filename)
         NSWorkspace.shared.selectFile(fileURL.path, inFileViewerRootedAtPath: "")
     }
 
     public func writeFinderTags(for note: Note) {
         guard let url = notesFolderURL else { return }
-        let fileURL = url.appendingPathComponent(note.filename + ".md")
+        let fileURL = url.appendingPathComponent(note.filename)
         FinderTagService.writeFinderTags(note.tags, to: fileURL)
     }
 
@@ -608,7 +608,7 @@ public final class AppState {
             return
         }
 
-        let fileURL = folderURL.appendingPathComponent(note.filename + ".md")
+        let fileURL = folderURL.appendingPathComponent(note.filename)
         let editorURL = URL(fileURLWithPath: editorPath)
 
         NSWorkspace.shared.open(

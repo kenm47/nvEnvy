@@ -48,6 +48,9 @@
     "© 2026 Kendall Miller · MIT License" : {
 
     },
+    "+%@" : {
+
+    },
     "⌘%@" : {
 
     },
@@ -344,6 +347,9 @@
           }
         }
       }
+    },
+    "Choose where to keep your notes" : {
+
     },
     "Clear search" : {
       "localizations" : {
@@ -760,6 +766,9 @@
         }
       }
     },
+    "Filtering by:" : {
+
+    },
     "Fonts & Colors" : {
       "localizations" : {
         "de" : {
@@ -999,6 +1008,9 @@
           }
         }
       }
+    },
+    "Looks like you're using a notes folder named '%@' on your Mac." : {
+
     },
     "Made by Kendall from [lunt.co](https://lunt.co)" : {
 
@@ -1354,6 +1366,9 @@
         }
       }
     },
+    "Pick a folder. nvEnvy will read and write Markdown files there." : {
+
+    },
     "Plain Text Style" : {
       "localizations" : {
         "de" : {
@@ -1640,6 +1655,12 @@
         }
       }
     },
+    "Sample Text" : {
+
+    },
+    "Save a search to create one." : {
+
+    },
     "Save Bookmark" : {
       "localizations" : {
         "de" : {
@@ -1902,6 +1923,9 @@
 
     },
     "Tags" : {
+
+    },
+    "Tap below to open it." : {
 
     },
     "Toggle Layout" : {

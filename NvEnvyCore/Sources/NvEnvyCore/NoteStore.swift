@@ -24,6 +24,32 @@ public actor NoteStore {
         filenameIndex.removeValue(forKey: note.filename)
     }
 
+    /// Picks a vault-relative filename (extension included) for `base`
+    /// (a title, not yet sanitized) that collides with neither a note already
+    /// on disk nor one already in memory (created but not yet flushed —
+    /// `FileStorageService.ensureUniqueFilename`'s disk-only check missed
+    /// this, so two notes created in the same batch with the same title
+    /// — e.g. importing two files both titled "Untitled" — could end up
+    /// sharing a key and trapping `NotesViewModel.rebuildNotesByID()`).
+    /// `excluding` lets a rename check uniqueness against everything except
+    /// the note being renamed.
+    private func uniqueFilename(
+        base: String, extension ext: String, directory: String = "", excluding: UUID? = nil
+    ) async -> String {
+        let stem = directory + Note.sanitizedFilename(from: base)
+        var candidate = stem + ext
+        var counter = 2
+        while true {
+            let takenInMemory = filenameIndex[candidate].map { $0 != excluding } ?? false
+            let takenOnDisk = takenInMemory ? true : await storage.fileExists(relativePath: candidate)
+            if !takenInMemory && !takenOnDisk {
+                return candidate
+            }
+            candidate = "\(stem) \(counter)\(ext)"
+            counter += 1
+        }
+    }
+
     public func loadAll() async throws {
         let loaded = try await storage.readAllNotes()
         for note in loaded {
@@ -45,12 +71,19 @@ public actor NoteStore {
                         dirtyNoteIDs.insert(rec.noteID)
                     }
                 } else {
-                    // Note not on disk yet — recreate from WAL
+                    // Note not on disk yet — recreate from WAL. The WAL
+                    // carries no filename, so pick one that can't collide
+                    // with a note already loaded from disk or recovered
+                    // earlier in this same loop (a second route into the
+                    // launch-time index collision: `Note.init`'s bare
+                    // sanitized-title fallback had no uniqueness check).
+                    let filename = await uniqueFilename(base: rec.title, extension: ".md")
                     let note = Note(
                         id: rec.noteID,
                         title: rec.title,
                         body: rec.body,
                         tags: rec.tags,
+                        filename: filename,
                         modifiedDate: rec.timestamp
                     )
                     notes[note.id] = note
@@ -74,8 +107,7 @@ public actor NoteStore {
     }
 
     public func createNote(title: String) async throws -> Note {
-        let sanitized = Note.sanitizedFilename(from: title)
-        let uniqueName = await storage.ensureUniqueFilename(sanitized)
+        let uniqueName = await uniqueFilename(base: title, extension: ".md")
         let note = Note(title: title, filename: uniqueName)
         notes[note.id] = note
         indexNote(note)
@@ -84,8 +116,7 @@ public actor NoteStore {
     }
 
     public func addImportedNote(title: String, body: String, tags: [String]) async throws -> Note {
-        let sanitized = Note.sanitizedFilename(from: title)
-        let uniqueName = await storage.ensureUniqueFilename(sanitized)
+        let uniqueName = await uniqueFilename(base: title, extension: ".md")
         let note = Note(title: title, body: body, tags: tags, filename: uniqueName)
         notes[note.id] = note
         indexNote(note)
@@ -108,9 +139,24 @@ public actor NoteStore {
     public func updateTitle(noteID: UUID, title: String) async throws {
         guard let note = notes[noteID] else { return }
         let oldFilename = note.filename
+        // Keep the note where it lives and in the format it's already in:
+        // only the base name follows the title. Renaming "Daily/log.txt" to
+        // "Journal" must yield "Daily/Journal.txt", not "Journal.md" at the
+        // vault root.
+        let directory = note.filenameDirectory
+        let ext = note.filenameExtension
+        let candidate = directory + Note.sanitizedFilename(from: title) + ext
         unindexNote(note)
         note.title = title
-        note.filename = Note.sanitizedFilename(from: title)
+        // If the sanitized name didn't actually change (e.g. only casing, or
+        // whitespace `sanitizedFilename` collapses the same way), keep the
+        // existing filename rather than asking `uniqueFilename` — the old
+        // file is still on disk under that exact name at this point (the
+        // rename below hasn't happened yet), so it would look "taken" and
+        // get bumped to " 2" for no reason.
+        note.filename = candidate == oldFilename
+            ? oldFilename
+            : await uniqueFilename(base: title, extension: ext, directory: directory, excluding: noteID)
         note.modifiedDate = Date()
         note.invalidateSearchCache()
         indexNote(note)

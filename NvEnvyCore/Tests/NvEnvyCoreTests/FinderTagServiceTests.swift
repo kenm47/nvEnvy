@@ -42,7 +42,7 @@ final class FinderTagServiceTests: XCTestCase {
         // Set Finder tags on the file
         FinderTagService.writeFinderTags(["imported", "todo"], to: fileURL)
 
-        let note = Note(title: "Migrate", body: "Body text", tags: [], filename: "migrate")
+        let note = Note(title: "Migrate", body: "Body text", tags: [], filename: "migrate.md")
         let migrated = FinderTagService.migrateFinderTagsIfNeeded(for: note, fileURL: fileURL)
         XCTAssertTrue(migrated)
         XCTAssertEqual(note.tags, ["imported", "todo"])
@@ -54,7 +54,7 @@ final class FinderTagServiceTests: XCTestCase {
 
         FinderTagService.writeFinderTags(["finder-tag"], to: fileURL)
 
-        let note = Note(title: "Existing", body: "Body", tags: ["existing-tag"], filename: "existing")
+        let note = Note(title: "Existing", body: "Body", tags: ["existing-tag"], filename: "existing.md")
         let migrated = FinderTagService.migrateFinderTagsIfNeeded(for: note, fileURL: fileURL)
         XCTAssertFalse(migrated)
         XCTAssertEqual(note.tags, ["existing-tag"])

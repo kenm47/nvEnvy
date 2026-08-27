@@ -68,30 +68,36 @@ public actor FileStorageService {
 
     public var allowedExtensions: Set<String>
 
-    private var basePrefix: String {
-        let basePath = notesDirectory.resolvingSymlinksInPath().path
+    private var basePrefix: String { Self.basePrefix(for: notesDirectory) }
+
+    /// Trailing-slash-terminated absolute path of `directory`, for
+    /// `relativeFilename`. `public static` so callers outside this actor
+    /// (the iCloud sync-status monitors) can key their own paths the same way.
+    public static func basePrefix(for directory: URL) -> String {
+        let basePath = directory.resolvingSymlinksInPath().path
         return basePath.hasSuffix("/") ? basePath : basePath + "/"
     }
 
-    /// Relative "filename" (no extension) nvEnvy uses as a note's stable key,
-    /// derived from an absolute file URL. Pure path arithmetic — doesn't touch disk.
-    /// `static` (not actor-isolated) so it can run concurrently from parallel load tasks.
-    private static func relativeFilename(for url: URL, basePrefix: String) -> String {
+    /// Relative "filename" nvEnvy uses as a note's stable key, derived from an
+    /// absolute file URL. This is the file's full vault-relative path,
+    /// extension included (e.g. "Daily/log.md") — it must include the
+    /// extension, since two files that differ only by extension (`Ideas.md`
+    /// and `Ideas.txt`, both accepted by `allowedExtensions`) would otherwise
+    /// collide on the same key. Pure path arithmetic — doesn't touch disk.
+    /// `public static` (not actor-isolated) so it can run concurrently from
+    /// parallel load tasks, and so the iCloud sync-status monitors can key
+    /// their own paths identically to how notes are keyed here.
+    public static func relativeFilename(for url: URL, basePrefix: String) -> String {
         let filePath = url.path
-        let relativePath: String
         if filePath.hasPrefix(basePrefix) {
-            relativePath = String(filePath.dropFirst(basePrefix.count))
-        } else {
-            // Fallback: resolve this one URL if prefix doesn't match
-            let resolved = url.resolvingSymlinksInPath().path
-            if resolved.hasPrefix(basePrefix) {
-                relativePath = String(resolved.dropFirst(basePrefix.count))
-            } else {
-                relativePath = url.lastPathComponent
-            }
+            return String(filePath.dropFirst(basePrefix.count))
         }
-        let ext = url.pathExtension
-        return String(relativePath.dropLast(ext.count + 1)) // remove .ext
+        // Fallback: resolve this one URL if prefix doesn't match
+        let resolved = url.resolvingSymlinksInPath().path
+        if resolved.hasPrefix(basePrefix) {
+            return String(resolved.dropFirst(basePrefix.count))
+        }
+        return url.lastPathComponent
     }
 
     /// Filename key for an absolute path, without touching disk. Returns nil if
@@ -261,10 +267,15 @@ public actor FileStorageService {
     }
 
     public func renameNote(_ note: Note, oldFilename: String) throws {
-        let oldURL = notesDirectory.appendingPathComponent(oldFilename + ".md")
+        let oldURL = notesDirectory.appendingPathComponent(oldFilename)
         let newURL = fileURL(for: note)
         try coordinator.coordinate(writingItemAt: oldURL) { resolvedOld in
             if self.fileManager.fileExists(atPath: resolvedOld.path) && resolvedOld != newURL {
+                // The rename may move the note into a subfolder that doesn't
+                // exist yet (title changed along with `filenameDirectory`, or
+                // `updateTitle` moved it) — make sure the destination exists.
+                try self.fileManager.createDirectory(
+                    at: newURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try self.fileManager.moveItem(at: resolvedOld, to: newURL)
             }
         }
@@ -273,23 +284,25 @@ public actor FileStorageService {
     // MARK: - Helpers
 
     public func fileURL(for note: Note) -> URL {
-        notesDirectory.appendingPathComponent(note.filename + ".md")
+        notesDirectory.appendingPathComponent(note.filename)
     }
 
-    public func ensureUniqueFilename(_ baseName: String) -> String {
-        var name = baseName
-        var counter = 2
-        while fileManager.fileExists(atPath: notesDirectory.appendingPathComponent(name + ".md").path) {
-            name = "\(baseName) \(counter)"
-            counter += 1
-        }
-        return name
+    /// True if a file already exists at `relativePath` (vault-relative,
+    /// extension included). Disk-only check — callers that also need to guard
+    /// against an in-memory note that hasn't been flushed yet (`NoteStore`)
+    /// must additionally check their own index.
+    public func fileExists(relativePath: String) -> Bool {
+        fileManager.fileExists(atPath: notesDirectory.appendingPathComponent(relativePath).path)
     }
 
     private func atomicWrite(content: String, to url: URL, encoding: String.Encoding = .utf8) throws {
         guard let data = content.data(using: encoding) ?? content.data(using: .utf8) else {
             throw FileStorageError.encodingError
         }
+        // The destination may be in a subfolder that doesn't exist yet (a
+        // freshly-renamed note, or a note created directly into a subfolder).
+        try fileManager.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let tempURL = url.deletingLastPathComponent()
             .appendingPathComponent(".\(UUID().uuidString).tmp")
         // No `.atomic` here: `replaceItemAt` below is already the atomicity

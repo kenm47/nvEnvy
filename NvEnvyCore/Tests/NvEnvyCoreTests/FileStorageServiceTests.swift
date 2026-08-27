@@ -67,12 +67,57 @@ final class FileStorageServiceTests: XCTestCase {
         XCTAssertTrue(content.contains("Updated"))
     }
 
-    func testUniqueFilename() async throws {
+    func testFileExistsRelativePath() async throws {
+        // `ensureUniqueFilename` moved to `NoteStore` (it needs to check
+        // in-memory notes too, not just disk — see NoteStoreTests), but the
+        // disk-only primitive it's built on lives here.
         let file = tempDir.appendingPathComponent("Duplicate.md")
         try "existing".write(to: file, atomically: true, encoding: .utf8)
 
-        let unique = await storage.ensureUniqueFilename("Duplicate")
-        XCTAssertEqual(unique, "Duplicate 2")
+        let exists = await storage.fileExists(relativePath: "Duplicate.md")
+        XCTAssertTrue(exists)
+        let missing = await storage.fileExists(relativePath: "Duplicate 2.md")
+        XCTAssertFalse(missing)
+    }
+
+    func testSameStemDifferentExtensionsProduceDistinctFilenames() async throws {
+        // Regression: `Ideas.md` and `Ideas.txt` both used to map to the key
+        // "Ideas" (the extension was stripped), which trapped
+        // `Dictionary(uniqueKeysWithValues:)` in
+        // `NotesViewModel.rebuildNotesByID()` on launch.
+        try "one".write(to: tempDir.appendingPathComponent("Ideas.md"), atomically: true, encoding: .utf8)
+        try "two".write(to: tempDir.appendingPathComponent("Ideas.txt"), atomically: true, encoding: .utf8)
+
+        let notes = try await storage.readAllNotes()
+
+        XCTAssertEqual(notes.count, 2)
+        XCTAssertEqual(Set(notes.map(\.filename)), ["Ideas.md", "Ideas.txt"])
+        XCTAssertEqual(Set(notes.map(\.title)), ["Ideas"]) // titles still collide, and that's fine
+    }
+
+    func testWriteNotePreservesNonMarkdownExtension() async throws {
+        try "body".write(to: tempDir.appendingPathComponent("Plain.txt"), atomically: true, encoding: .utf8)
+        let note = try await storage.readAllNotes().first!
+        note.body = "edited"
+        try await storage.writeNote(note)
+
+        let rewritten = try String(contentsOf: tempDir.appendingPathComponent("Plain.txt"), encoding: .utf8)
+        XCTAssertTrue(rewritten.contains("edited"))
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: tempDir.appendingPathComponent("Plain.md").path),
+            "editing a .txt note must not fork it into a new .md file"
+        )
+    }
+
+    func testRenameNoteCreatesDestinationDirectory() async throws {
+        let note = Note(title: "Old", body: "x", filename: "Old.md")
+        try await storage.writeNote(note)
+
+        note.filename = "New/Old.md"
+        try await storage.renameNote(note, oldFilename: "Old.md")
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: tempDir.appendingPathComponent("New/Old.md").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tempDir.appendingPathComponent("Old.md").path))
     }
 
     func testNonAllowedFilesIgnored() async throws {
@@ -102,12 +147,12 @@ final class FileStorageServiceTests: XCTestCase {
         let rootNote = notes.first { $0.title == "Root Note" }
         XCTAssertNotNil(rootNote)
         XCTAssertEqual(rootNote?.body, "Root body")
-        XCTAssertEqual(rootNote?.filename, "Root Note")
+        XCTAssertEqual(rootNote?.filename, "Root Note.md")
 
         let subFolderNote = notes.first { $0.title == "Sub Note" }
         XCTAssertNotNil(subFolderNote)
         XCTAssertEqual(subFolderNote?.body, "Sub body")
-        XCTAssertEqual(subFolderNote?.filename, "subfolder/Sub Note")
+        XCTAssertEqual(subFolderNote?.filename, "subfolder/Sub Note.md")
     }
 
     func testObsidianDirIgnored() async throws {
@@ -168,7 +213,7 @@ final class FileStorageServiceTests: XCTestCase {
 
         let notes = try await storage.readAllNotes()
         XCTAssertEqual(notes.count, 1)
-        XCTAssertEqual(notes[0].filename, "a/b/c/Deep")
+        XCTAssertEqual(notes[0].filename, "a/b/c/Deep.md")
     }
 
     // MARK: - NSFileCoordinatorAdapter (iOS coordinator seam)

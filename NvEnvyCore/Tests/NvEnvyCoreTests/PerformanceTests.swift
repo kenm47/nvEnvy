@@ -39,7 +39,7 @@ final class PerformanceTests: XCTestCase {
                 title: "Benchmark Note \(i)",
                 body: "Body content for note \(i). Some additional text here.",
                 tags: ["benchmark"],
-                filename: "benchmark-note-\(i)"
+                filename: "benchmark-note-\(i).md"
             )
             try await storage.writeNote(note)
         }
@@ -94,7 +94,7 @@ final class PerformanceTests: XCTestCase {
         let largeBody = String(repeating: "Lorem ipsum dolor sit amet. ", count: 4000) // ~112KB
         XCTAssertGreaterThan(largeBody.utf8.count, 100_000)
 
-        let note = Note(title: "Large Note", body: largeBody, filename: "large-note")
+        let note = Note(title: "Large Note", body: largeBody, filename: "large-note.md")
         try await storage.writeNote(note)
 
         let notes = try await storage.readAllNotes()

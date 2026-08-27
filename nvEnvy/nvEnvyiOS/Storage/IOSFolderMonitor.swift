@@ -71,6 +71,11 @@ final class IOSFolderMonitor {
         }
         guard !items.isEmpty else { return }
 
+        // Key on the full vault-relative path (extension included), the same
+        // way `Note.filename` is derived — `lastPathComponent` used to drop
+        // both the extension and any subfolder, so a note like "Daily/log.md"
+        // never matched here and its sync status silently never updated.
+        let basePrefix = FileStorageService.basePrefix(for: folderURL)
         var statuses: [String: SyncStatus] = [:]
         var changedPaths: [String] = []
 
@@ -79,7 +84,7 @@ final class IOSFolderMonitor {
             let url = URL(fileURLWithPath: path)
             changedPaths.append(path)
 
-            let filename = url.deletingPathExtension().lastPathComponent
+            let filename = FileStorageService.relativeFilename(for: url, basePrefix: basePrefix)
             statuses[filename] = syncStatus(for: item, at: url)
 
             // Files not yet downloaded (`.icloud` placeholders) never appear in

@@ -228,7 +228,7 @@ final class NotesViewModelTests: XCTestCase {
         vm.updateNoteBody(noteID: note.id, body: "unsaved edit")
         await vm.flushBeforeQuit()
 
-        let fileURL = tempDir.appendingPathComponent(note.filename + ".md")
+        let fileURL = tempDir.appendingPathComponent(note.filename)
         let contents = try String(contentsOf: fileURL, encoding: .utf8)
         XCTAssertTrue(contents.contains("unsaved edit"), "flushBeforeQuit must persist the pending debounced edit")
     }
@@ -253,5 +253,30 @@ final class NotesViewModelTests: XCTestCase {
     private func seedAllNotes(_ notes: [Note]) {
         vm.allNotes = notes
         vm.filteredNotes = notes
+    }
+
+    // MARK: - rebuildNotesByID() — duplicate-filename launch crash
+
+    func testDuplicateFilenamesDoNotTrap() {
+        // Regression: a vault containing e.g. `Ideas.md` and `Ideas.txt` used
+        // to collide on the same key and trap `Dictionary(uniqueKeysWithValues:)`
+        // on launch. `filename` here is the same key `NoteStore` would derive
+        // for two on-disk files sharing a stem.
+        let a = Note(title: "Ideas", filename: "Ideas.md")
+        let b = Note(title: "Ideas", filename: "Ideas.txt")
+        seedAllNotes([a, b]) // must not crash
+        XCTAssertEqual(vm.allNotes.count, 2)
+        XCTAssertNotNil(vm.note(for: a.id))
+        XCTAssertNotNil(vm.note(for: b.id))
+    }
+
+    func testSyncStatusMatchesNoteInSubfolder() {
+        // Regression: sync-status keys used to be `lastPathComponent` with the
+        // extension stripped, which drops the directory entirely — a note at
+        // "Daily/log.md" was keyed as "log" and never matched.
+        let note = Note(title: "log", filename: "Daily/log.md")
+        seedAllNotes([note])
+        vm.updateSyncStatus(filename: "Daily/log.md", status: .conflict)
+        XCTAssertEqual(note.syncStatus, .conflict)
     }
 }
