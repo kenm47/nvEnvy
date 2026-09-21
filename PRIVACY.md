@@ -27,20 +27,17 @@ device information.
 
 ## Network connections
 
-- **Mac App Store build:** the app makes no outbound network connections of
-  its own.
-- **Direct-download build (DMG):** the app uses Sparkle to check
-  `https://nvenvy.app/appcast.xml` for software updates. This is a static XML
-  file; the request is unauthenticated and contains only what your operating
-  system sends with any URL request (HTTP user agent, IP at the network
-  layer). No usage information is included.
+nvEnvy makes no outbound network connections of its own. There is no
+in-app updater, no telemetry, and no phone-home of any kind. The only
+network traffic involving your notes is iCloud sync, which is handled by
+macOS under your Apple ID if you keep your notes folder in iCloud Drive.
 
 ## Third parties
 
 nvEnvy does not embed advertising SDKs, analytics SDKs, crash reporters, or
 any other third-party data collectors. Open-source dependencies used at build
-time (Sparkle, KeyboardShortcuts, Yams, swift-markdown) operate entirely
-within the app and do not transmit data.
+time (KeyboardShortcuts, Yams, swift-markdown) operate entirely within the
+app and do not transmit data.
 
 ## Contact
 

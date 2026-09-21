@@ -133,7 +133,5 @@
 	</array>
 	<key>OSAScriptingDefinition</key>
 	<string>nvEnvy.sdef</string>
-	<key>SUFeedURL</key>
-	<string>https://nvenvy.app/appcast.xml</string>
 </dict>
 </plist>

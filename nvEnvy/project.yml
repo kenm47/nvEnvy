@@ -13,9 +13,6 @@ packages:
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     from: "2.0.0"
-  Sparkle:
-    url: https://github.com/sparkle-project/Sparkle
-    from: "2.5.0"
 
 targetTemplates:
   nvEnvyMacBase:
@@ -62,7 +59,6 @@ targets:
         ATSApplicationFontsPath: Fonts
         CFBundleShortVersionString: "1.2.1"
         CFBundleVersion: "3"
-        SUFeedURL: "https://nvenvy.app/appcast.xml"
         NSAppleScriptEnabled: true
         OSAScriptingDefinition: nvEnvy.sdef
         NSServices:
@@ -112,13 +108,9 @@ targets:
               - webarchive
             CFBundleTypeRole: Viewer
             LSHandlerRank: None
-    settings:
-      base:
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: SPARKLE_ENABLED
     dependencies:
       - package: NvEnvyCore
       - package: KeyboardShortcuts
-      - package: Sparkle
 
   nvEnvy-MAS:
     templates: [nvEnvyMacBase]

@@ -118,7 +118,6 @@ nvEnvy collects nothing. Notes stay on your Mac (and in your iCloud Drive, if yo
 ## Acknowledgments
 
 - Descended from [Notational Velocity](http://notational.net) by Zachary Schneirov (via Brett Terpstra's [nvALT](https://brettterpstra.com/projects/nvalt/) fork).
-- [Sparkle](https://sparkle-project.org) — auto-update framework, linked by the direct-download target. Not used by the Mac App Store build, and no direct-download build is currently published.
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus — user-configurable global hotkeys.
 - [Yams](https://github.com/jpsim/Yams) — YAML parsing for frontmatter.
 - [swift-markdown](https://github.com/apple/swift-markdown) — Apple's Markdown parser.

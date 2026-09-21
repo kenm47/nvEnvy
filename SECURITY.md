@@ -24,7 +24,7 @@ In scope:
 
 Out of scope:
 
-- Vulnerabilities in upstream dependencies (Sparkle, KeyboardShortcuts, Yams,
+- Vulnerabilities in upstream dependencies (KeyboardShortcuts, Yams,
   swift-markdown) — please report those to the respective projects.
 - Vulnerabilities in macOS itself or in iCloud Drive — report to Apple via
   <https://security.apple.com/>.

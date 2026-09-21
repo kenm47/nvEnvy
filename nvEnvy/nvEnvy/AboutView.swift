@@ -47,7 +47,6 @@ struct AboutView: View {
                 Text("Built with")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                Text("• [Sparkle](https://sparkle-project.org) — auto-update")
                 Text("• [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) — global hotkeys")
                 Text("• [Yams](https://github.com/jpsim/Yams) — YAML parsing")
                 Text("• [swift-markdown](https://github.com/apple/swift-markdown) — Markdown rendering")
