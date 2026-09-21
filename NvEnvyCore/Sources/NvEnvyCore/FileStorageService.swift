@@ -120,6 +120,24 @@ public actor FileStorageService {
         return (modDate, UInt64(size))
     }
 
+    /// `SF_DATALESS` — the file's content is not present locally (an evicted or
+    /// still-downloading cloud item). Declared here because Darwin doesn't surface
+    /// the constant to Swift; value from `<sys/stat.h>`.
+    private static let datalessFlag: UInt32 = 0x4000_0000
+
+    /// Whether `url`'s content is absent locally, so reading it would block while
+    /// the cloud provider materialises it.
+    ///
+    /// Deliberately stat(2) and not a `URLResourceKey` — see the note in
+    /// `parseNoteFile`. Returns false if stat fails: a file we can't stat will
+    /// fail its read a moment later and be skipped there, which is the same
+    /// outcome by a cheaper route.
+    static func isDataless(_ url: URL) -> Bool {
+        var info = stat()
+        guard stat(url.path, &info) == 0 else { return false }
+        return (info.st_flags & datalessFlag) != 0
+    }
+
     /// Reads and parses a single note file. `static`/non-isolated (takes its
     /// inputs as plain values) so it can run concurrently across `Task`s
     /// without hopping back onto the `FileStorageService` actor per file.
@@ -135,10 +153,19 @@ public actor FileStorageService {
         // single file's download stalls, since it blocks the whole chunk it's
         // in. Skip anything not already local; `IOSFolderMonitor` kicks off the
         // download and `reconcileFilesystem` picks the note up once it lands.
-        if let status = try? url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey]).ubiquitousItemDownloadingStatus,
-           status != .current {
-            return nil
-        }
+        //
+        // Detected with stat(2) rather than `.ubiquitousItemDownloadingStatusKey`.
+        // That resource key is answered by the iCloud daemon, and on a vault this
+        // size the round trips dominate the entire load:
+        //
+        //     resourceValues(.ubiquitousItemDownloadingStatus) : 1835 us/file  (~4.5s)
+        //     stat(2) + SF_DATALESS                            :     5 us/file  (~12ms)
+        //
+        // They agree — SF_DATALESS is the APFS flag for "content not materialised
+        // locally", which is exactly the condition that makes a read block. Note
+        // the daemon cost is not avoidable by parallelising: the calls fund through
+        // one daemon, so fanning them across cores just queues them there.
+        guard !Self.isDataless(url) else { return nil }
 
         // Not `.mappedIfSafe`: memory-mapping chokes with "Unknown compression
         // scheme encountered" on files under iCloud sync engines (observed with
@@ -184,12 +211,32 @@ public actor FileStorageService {
         defer { signposter.endInterval("readAllNotes", state, "\(noteCount) notes") }
 
         let exts = allowedExtensions
-        let urls: [URL] = try coordinator.coordinate(readingItemAt: notesDirectory) { dir in
+        let urls: [URL] = try PerformanceTelemetry.phase("readAllNotes.enumerate") {
+        try coordinator.coordinate(readingItemAt: notesDirectory) { dir in
+            // Only stat-backed keys belong here. A cloud-backed key — notably
+            // `.ubiquitousItemDownloadingStatusKey` — makes the enumerator round-trip
+            // to the iCloud daemon once per entry to satisfy the prefetch, and
+            // enumeration is necessarily serial (NSDirectoryEnumerator isn't
+            // concurrency-safe), so the cost cannot be parallelised away.
+            //
+            // Measured on a 2478-note Obsidian vault in iCloud Drive, alternating runs:
+            //
+            //     with    .ubiquitousItemDownloadingStatusKey : 4401 ms / 5841 ms
+            //     without it (sole change)                    :   16.5 ms /  16.7 ms
+            //
+            // ~300x, and it is why the note list sat empty for seconds after launch
+            // while the window stayed responsive: this runs inside the background
+            // Task from NotesViewModel.attach(), so it never blocks the main actor,
+            // it just starves the list of data.
+            //
+            // Dropping the key here is only half the fix, and on its own it is not a
+            // fix at all — `parseNoteFile` used to ask for the same key per file, so
+            // removing the prefetch merely relocated ~4.5s of daemon round trips from
+            // this loop into the parse. Both had to go; see `isDataless`.
             guard let enumerator = self.fileManager.enumerator(
                 at: dir,
                 includingPropertiesForKeys: [
                     .contentModificationDateKey, .fileSizeKey, .isDirectoryKey,
-                    .ubiquitousItemDownloadingStatusKey,
                 ],
                 options: [.skipsHiddenFiles]
             ) else { return [] }
@@ -210,6 +257,7 @@ public actor FileStorageService {
             }
             return collected
         }
+        }
 
         guard !urls.isEmpty else { return [] }
 
@@ -222,7 +270,8 @@ public actor FileStorageService {
             Array(urls[$0..<min($0 + chunkSize, urls.count)])
         }
 
-        return await withTaskGroup(of: [Note].self) { group in
+        return await PerformanceTelemetry.phaseAsync("readAllNotes.parse") {
+        await withTaskGroup(of: [Note].self) { group in
             for chunk in chunks {
                 group.addTask {
                     chunk.compactMap { Self.parseNoteFile(at: $0, allowedExtensions: exts, basePrefix: prefix) }
@@ -235,6 +284,7 @@ public actor FileStorageService {
             }
             noteCount = all.count
             return all
+        }
         }
     }
 
