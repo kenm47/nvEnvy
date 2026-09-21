@@ -116,6 +116,19 @@ struct BacktabMonitor: NSViewRepresentable {
                     (fr is NSView && (fr as? NSView)?.enclosingScrollView?.documentView is NSTableView)
                 guard isTableFocused else { return event }
 
+                // Escape from note list → search field. The table has no action
+                // for Escape, so without this it falls through to AppKit and
+                // beeps — while the shortcuts panel advertises "Escape — Return
+                // to search" unconditionally.
+                //
+                // `fr is NSText` excludes the inline-rename field editor: it
+                // lives inside the table's scroll view, so isTableFocused is
+                // true while renaming, and Escape there must cancel the rename
+                // rather than jump focus away.
+                if event.keyCode == 53, !(fr is NSText) {
+                    NotificationCenter.default.post(name: .nvEnvyFocusSearchField, object: nil)
+                    return nil
+                }
                 // Shift+Tab from note list → search field
                 if event.keyCode == 48, event.modifierFlags.contains(.shift) {
                     NotificationCenter.default.post(name: .nvEnvyFocusSearchField, object: nil)
