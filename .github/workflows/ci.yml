@@ -9,7 +9,7 @@ on:
 jobs:
   core-tests:
     name: NvEnvyCore unit tests
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: Show Swift version
@@ -20,7 +20,7 @@ jobs:
 
   app-build:
     name: nvEnvy app build
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
