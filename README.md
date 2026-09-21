@@ -11,8 +11,9 @@ A fast, keyboard-driven note-taking app for macOS. A modern rebuild of nvALT bui
 ## Install
 
 - **Mac App Store** — [Get nvEnvy on the Mac App Store](https://apps.apple.com/us/app/nvenvy/id6771612661).
-- **Direct download (DMG)** — Notarized, hardened-runtime build with Sparkle auto-update, available from [GitHub Releases](https://github.com/kenm47/nvEnvy/releases).
-- **Build from source** — See [Build Instructions](#build-instructions) below.
+- **Build from source** — See [Build Instructions](#build-instructions) below. You're very welcome to build and run it yourself.
+
+There is currently no direct download (DMG). The Mac App Store is the only distribution channel; everything else is source.
 
 Requires macOS 14 Sonoma or later. Universal (Apple Silicon + Intel).
 
@@ -31,7 +32,7 @@ Requires macOS 14 Sonoma or later. Universal (Apple Silicon + Intel).
 - **URL schemes** — `nvenvy://find/title` and `nvenvy://make?title=...&body=...` for automation.
 - **AppleScript & Shortcuts** — Full scripting support via `.sdef` and App Intents.
 - **Services menu** — Create notes from selected text in any app.
-- **Auto-update** — Sparkle integration for direct-download (DMG) builds; the Mac App Store build receives updates via the App Store.
+- **Auto-update** — Updates arrive through the Mac App Store.
 - **Localized** — English, German, French, Italian, Portuguese (BR), Chinese (Simplified).
 
 ## Keyboard Shortcuts
@@ -117,7 +118,7 @@ nvEnvy collects nothing. Notes stay on your Mac (and in your iCloud Drive, if yo
 ## Acknowledgments
 
 - Descended from [Notational Velocity](http://notational.net) by Zachary Schneirov (via Brett Terpstra's [nvALT](https://brettterpstra.com/projects/nvalt/) fork).
-- [Sparkle](https://sparkle-project.org) — auto-update framework (direct-download builds only).
+- [Sparkle](https://sparkle-project.org) — auto-update framework, linked by the direct-download target. Not used by the Mac App Store build, and no direct-download build is currently published.
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus — user-configurable global hotkeys.
 - [Yams](https://github.com/jpsim/Yams) — YAML parsing for frontmatter.
 - [swift-markdown](https://github.com/apple/swift-markdown) — Apple's Markdown parser.
