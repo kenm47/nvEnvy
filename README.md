@@ -86,8 +86,12 @@ swift test
 ```bash
 cd nvEnvy
 xcodegen generate
-xcodebuild -project nvEnvy.xcodeproj -scheme nvEnvy build
+xcodebuild -project nvEnvy.xcodeproj -scheme "nvEnvy (Direct Download)" build
 ```
+
+There are two macOS schemes: `nvEnvy (Direct Download)` and `nvEnvy (App Store)`.
+They build the same app and differ only in Info.plist. Use the former for
+day-to-day development.
 
 ### Run Tests
 
