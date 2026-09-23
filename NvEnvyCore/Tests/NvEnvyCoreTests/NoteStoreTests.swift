@@ -111,4 +111,59 @@ final class NoteStoreTests: XCTestCase {
         let hasDirtyAfter = await store.hasDirtyNotes
         XCTAssertFalse(hasDirtyAfter)
     }
+
+    // MARK: - Unknown frontmatter across external edits
+
+    /// Writes a note whose frontmatter carries a key nvEnvy doesn't model, with
+    /// an explicit mtime so reconciliation sees successive writes as newer.
+    private func writeExternally(_ url: URL, externalID: String, body: String, mtime: Date) throws {
+        try """
+        ---
+        id: \(externalID)
+        ---
+        \(body)
+        """.write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.modificationDate: mtime], ofItemAtPath: url.path)
+    }
+
+    /// An external tool rewriting a note's unknown frontmatter (Joplin assigning
+    /// or changing its `id`) must be picked up when the in-memory note is
+    /// refreshed, or the next save writes the stale keys back over it.
+    private func assertExternalFrontmatterSurvivesSave(
+        reconcile: (URL) async throws -> Void
+    ) async throws {
+        let file = tempDir.appendingPathComponent("Reconciled.md")
+        let start = Date(timeIntervalSinceNow: -60)
+        try writeExternally(file, externalID: "aaaa0000", body: "First", mtime: start)
+        try await store.loadAll()
+        let loaded = await store.allNotes()
+        let note = try XCTUnwrap(loaded.first)
+
+        try writeExternally(file, externalID: "bbbb1111-changed", body: "Second",
+                            mtime: start.addingTimeInterval(30))
+        try await reconcile(file)
+        XCTAssertEqual(note.body, "Second")
+
+        note.body = "Edited in nvEnvy"
+        await store.updateBody(noteID: note.id, body: note.body)
+        await store.flushDirtyNotes()
+
+        let written = try String(contentsOf: file, encoding: .utf8)
+        XCTAssertTrue(written.contains("id: bbbb1111-changed"),
+                      "External frontmatter change was reverted on save:\n\(written)")
+        XCTAssertFalse(written.contains("aaaa0000"), written)
+        XCTAssertTrue(written.contains("Edited in nvEnvy"))
+    }
+
+    func testReconcilePathsPicksUpExternalUnknownFrontmatter() async throws {
+        try await assertExternalFrontmatterSurvivesSave { url in
+            _ = await self.store.reconcilePaths([url.path])
+        }
+    }
+
+    func testReconcileWithFilesystemPicksUpExternalUnknownFrontmatter() async throws {
+        try await assertExternalFrontmatterSurvivesSave { _ in
+            try await self.store.reconcileWithFilesystem()
+        }
+    }
 }

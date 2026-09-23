@@ -257,6 +257,7 @@ public actor NoteStore {
                    fileMod > existMod {
                     existing.body = fileNote.body
                     existing.tags = fileNote.tags
+                    existing.unknownFrontmatterFields = fileNote.unknownFrontmatterFields
                     existing.modifiedDate = fileNote.modifiedDate
                     existing.fileModifiedDate = fileMod
                     existing.fileSize = fileNote.fileSize
@@ -320,6 +321,7 @@ public actor NoteStore {
                 guard let fresh = await storage.loadSingleNote(at: url) else { continue }
                 existing.body = fresh.body
                 existing.tags = fresh.tags
+                existing.unknownFrontmatterFields = fresh.unknownFrontmatterFields
                 existing.title = fresh.title
                 existing.modifiedDate = fresh.modifiedDate
                 existing.fileModifiedDate = fresh.fileModifiedDate
