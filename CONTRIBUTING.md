@@ -18,11 +18,14 @@ xcodegen generate
 open nvEnvy.xcodeproj
 ```
 
-There are two macOS app targets, `nvEnvy` and `nvEnvy-MAS`. They build the
-same application and differ only in their Info.plist — `nvEnvy-MAS` carries
-the keys the Mac App Store requires.
+There are two macOS app schemes, which build the same application and differ
+only in their Info.plist:
 
-For day-to-day development, use the scheme that builds the `nvEnvy` target.
+- **`nvEnvy (Direct Download)`** — builds the `nvEnvy` target.
+- **`nvEnvy (App Store)`** — builds the `nvEnvy-MAS` target, which carries the
+  keys the Mac App Store requires.
+
+For day-to-day development, use the `nvEnvy (Direct Download)` scheme.
 
 ## Tests
 

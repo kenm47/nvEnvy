@@ -23,6 +23,12 @@ public final class Note: Identifiable, @unchecked Sendable {
     @ObservationIgnored public var selectedRange: NSRange?
     public var syncStatus: SyncStatus = .local
 
+    /// Frontmatter keys nvEnvy doesn't model, carried from read to write so a
+    /// save doesn't strip them. External tools keep identity here — Joplin's
+    /// two-way sync stores the note's `id`, and losing it makes the file look
+    /// like a brand-new note on the next sync.
+    @ObservationIgnored public var unknownFrontmatterFields: [(key: String, value: Any)] = []
+
     // Search optimization: cached lowercase strings (not displayed; not observed)
     @ObservationIgnored public var cachedLowercaseTitle: String
     @ObservationIgnored public var cachedLowercaseBody: String
