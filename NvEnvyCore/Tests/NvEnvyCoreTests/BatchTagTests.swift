@@ -9,7 +9,10 @@ final class BatchTagTests: XCTestCase {
         tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let storage = FileStorageService(notesDirectory: tempDir)
-        store = NoteStore(storage: storage)
+        // Isolate this NoteStore's WAL from the default shared cache path so
+        // it doesn't race other tests' WAL writes under `--parallel`.
+        let crashRecovery = CrashRecoveryService(cacheDirectory: tempDir.appendingPathComponent("wal-cache"))
+        store = NoteStore(storage: storage, crashRecovery: crashRecovery)
     }
 
     override func tearDown() async throws {

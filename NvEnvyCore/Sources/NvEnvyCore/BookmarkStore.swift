@@ -16,9 +16,11 @@ public struct Bookmark: Codable, Identifiable, Sendable {
 
 public final class BookmarkStore: @unchecked Sendable {
     private static let storageKey = "nvEnvyBookmarks"
+    private let defaults: UserDefaults
     private(set) public var bookmarks: [Bookmark] = []
 
-    public init() {
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         load()
     }
 
@@ -59,12 +61,12 @@ public final class BookmarkStore: @unchecked Sendable {
 
     private func save() {
         if let data = try? JSONEncoder().encode(bookmarks) {
-            UserDefaults.standard.set(data, forKey: Self.storageKey)
+            defaults.set(data, forKey: Self.storageKey)
         }
     }
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: Self.storageKey),
+        guard let data = defaults.data(forKey: Self.storageKey),
               let decoded = try? JSONDecoder().decode([Bookmark].self, from: data) else { return }
         bookmarks = decoded
     }

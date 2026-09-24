@@ -6,12 +6,17 @@ public actor NoteStore {
     private var dirtyNoteIDs: Set<UUID> = []
     private let storage: FileStorageService
     private var flushTask: Task<Void, Never>?
-    private let flushInterval: Duration = .seconds(2)
+    private let flushInterval: Duration
     private let crashRecovery: CrashRecoveryService
 
-    public init(storage: FileStorageService, crashRecovery: CrashRecoveryService? = nil) {
+    public init(
+        storage: FileStorageService,
+        crashRecovery: CrashRecoveryService? = nil,
+        flushInterval: Duration = .seconds(2)
+    ) {
         self.storage = storage
         self.crashRecovery = crashRecovery ?? CrashRecoveryService()
+        self.flushInterval = flushInterval
     }
 
     // MARK: - Load
@@ -197,17 +202,38 @@ public actor NoteStore {
     public func markDirty(_ noteID: UUID) {
         dirtyNoteIDs.insert(noteID)
         if let note = notes[noteID] {
-            Task {
+            pendingWALWrites.append(Task {
                 try? await self.crashRecovery.appendRecord(note: note)
-            }
+            })
         }
         scheduleFlush()
     }
 
+    /// WAL appends started by `markDirty`, which are deliberately not awaited
+    /// there so an edit is never blocked on disk.
+    ///
+    /// Cleared by `flushDirtyNotes`, which runs on the flush debounce after the
+    /// last edit, so this stays bounded by the edits within one flush window.
+    private var pendingWALWrites: [Task<Void, Never>] = []
+
+    /// Awaits the in-flight WAL appends.
+    ///
+    /// Because `markDirty` fires those as unstructured tasks, a caller that has
+    /// awaited an edit has no guarantee the record reached the log yet. Nothing
+    /// in the app needs that guarantee — the WAL only has to be durable before a
+    /// crash, not before the next statement — but a test asserting on recovery
+    /// does, and without it `testWALRecovery` races its own WAL write and flakes
+    /// under `swift test --parallel`.
+    func awaitPendingWALWrites() async {
+        let inFlight = pendingWALWrites
+        pendingWALWrites.removeAll()
+        for task in inFlight { await task.value }
+    }
+
     private func scheduleFlush() {
         flushTask?.cancel()
-        flushTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(2))
+        flushTask = Task { [weak self, flushInterval] in
+            try? await Task.sleep(for: flushInterval)
             guard !Task.isCancelled else { return }
             await self?.flushDirtyNotes()
         }
@@ -216,6 +242,7 @@ public actor NoteStore {
     public func flushDirtyNotes() async {
         let ids = dirtyNoteIDs
         dirtyNoteIDs.removeAll()
+        pendingWALWrites.removeAll()
 
         var anyFailed = false
         for id in ids {

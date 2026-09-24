@@ -78,7 +78,10 @@ final class TagTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let storage = FileStorageService(notesDirectory: tempDir)
-        let store = NoteStore(storage: storage)
+        // Isolate this NoteStore's WAL from the default shared cache path so
+        // it doesn't race other tests' WAL writes under `--parallel`.
+        let crashRecovery = CrashRecoveryService(cacheDirectory: tempDir.appendingPathComponent("wal-cache"))
+        let store = NoteStore(storage: storage, crashRecovery: crashRecovery)
         let note = try await store.createNote(title: "Tag Test")
 
         await store.updateTags(noteID: note.id, tags: ["a", "b"])

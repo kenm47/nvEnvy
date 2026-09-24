@@ -10,7 +10,16 @@ final class IntegrationTests: XCTestCase {
         tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         storage = FileStorageService(notesDirectory: tempDir)
-        store = NoteStore(storage: storage)
+        // NoteStore's default CrashRecoveryService() writes to a fixed,
+        // shared path (~/Library/Caches/com.nvenvy.app/wal.bin). Under
+        // `swift test --parallel`, separate test processes would share and
+        // clobber that one WAL file, so every NoteStore built in these tests
+        // gets its own CrashRecoveryService rooted in this test's tempDir.
+        store = NoteStore(storage: storage, crashRecovery: makeCrashRecovery())
+    }
+
+    private func makeCrashRecovery() -> CrashRecoveryService {
+        CrashRecoveryService(cacheDirectory: tempDir.appendingPathComponent("wal-cache-\(UUID().uuidString)"))
     }
 
     override func tearDown() async throws {
@@ -34,7 +43,7 @@ final class IntegrationTests: XCTestCase {
         await store.flushDirtyNotes()
 
         // Create a new store from the same directory and re-read
-        let store2 = NoteStore(storage: storage)
+        let store2 = NoteStore(storage: storage, crashRecovery: makeCrashRecovery())
         try await store2.loadAll()
         let allNotes = await store2.allNotes()
         let found = allNotes.first { $0.title == "Modify Test" }
@@ -60,10 +69,19 @@ final class IntegrationTests: XCTestCase {
         try FileManager.default.createDirectory(at: walDir, withIntermediateDirectories: true)
         let crashRecovery = CrashRecoveryService(cacheDirectory: walDir)
 
-        let store1 = NoteStore(storage: storage, crashRecovery: crashRecovery)
+        // A very long flush interval means the background auto-flush timer
+        // (normally 2s) cannot possibly fire before this test constructs
+        // store2 below, however slow/loaded the machine is. Without this,
+        // the test raced a real 2-second timer: on a loaded CI box the
+        // scheduled flush could win, truncating the WAL before "crash
+        // recovery" got a chance to read it, and the test would flake.
+        let store1 = NoteStore(storage: storage, crashRecovery: crashRecovery, flushInterval: .seconds(3600))
         let note = try await store1.createNote(title: "WAL Test")
         await store1.updateBody(noteID: note.id, body: "This should be recovered")
-        // Don't flush — simulate crash
+        // Don't flush — simulate crash. But markDirty fires the WAL append as an
+        // unstructured Task, so awaiting updateBody does not mean the record has
+        // landed; without this the test races its own WAL write.
+        await store1.awaitPendingWALWrites()
 
         // Create a new store with same storage and WAL
         let store2 = NoteStore(storage: storage, crashRecovery: crashRecovery)

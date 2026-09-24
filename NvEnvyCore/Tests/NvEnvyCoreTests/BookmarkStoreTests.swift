@@ -2,13 +2,27 @@ import XCTest
 @testable import NvEnvyCore
 
 final class BookmarkStoreTests: XCTestCase {
+    // Each test gets its own UserDefaults suite so `swift test --parallel`
+    // (which runs suites in separate processes sharing the app's
+    // UserDefaults domain) can't have one test's writes clobber another's.
+    private var suiteName: String!
+    private var defaults: UserDefaults!
 
     override func setUp() {
-        UserDefaults.standard.removeObject(forKey: "nvEnvyBookmarks")
+        suiteName = "nvEnvyBookmarkStoreTests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    private func makeStore() -> BookmarkStore {
+        BookmarkStore(defaults: defaults)
     }
 
     func testAddBookmark() {
-        let store = BookmarkStore()
+        let store = makeStore()
         let bookmark = Bookmark(name: "Test", searchQuery: "swift")
         store.add(bookmark)
         XCTAssertEqual(store.bookmarks.count, 1)
@@ -17,7 +31,7 @@ final class BookmarkStoreTests: XCTestCase {
     }
 
     func testRemoveBookmark() {
-        let store = BookmarkStore()
+        let store = makeStore()
         let b1 = Bookmark(name: "One", searchQuery: "a")
         let b2 = Bookmark(name: "Two", searchQuery: "b")
         store.add(b1)
@@ -28,7 +42,7 @@ final class BookmarkStoreTests: XCTestCase {
     }
 
     func testRemoveAtIndex() {
-        let store = BookmarkStore()
+        let store = makeStore()
         store.add(Bookmark(name: "One", searchQuery: "a"))
         store.add(Bookmark(name: "Two", searchQuery: "b"))
         store.remove(at: 0)
@@ -37,7 +51,7 @@ final class BookmarkStoreTests: XCTestCase {
     }
 
     func testRenameBookmark() {
-        let store = BookmarkStore()
+        let store = makeStore()
         let bookmark = Bookmark(name: "Old", searchQuery: "q")
         store.add(bookmark)
         store.rename(id: bookmark.id, to: "New")
@@ -45,7 +59,7 @@ final class BookmarkStoreTests: XCTestCase {
     }
 
     func testBookmarkAtIndex() {
-        let store = BookmarkStore()
+        let store = makeStore()
         XCTAssertNil(store.bookmark(at: 0))
         store.add(Bookmark(name: "First", searchQuery: "x"))
         XCTAssertEqual(store.bookmark(at: 0)?.name, "First")
@@ -53,16 +67,16 @@ final class BookmarkStoreTests: XCTestCase {
     }
 
     func testPersistence() {
-        let store1 = BookmarkStore()
+        let store1 = makeStore()
         store1.add(Bookmark(name: "Persisted", searchQuery: "test"))
 
-        let store2 = BookmarkStore()
+        let store2 = makeStore()
         XCTAssertEqual(store2.bookmarks.count, 1)
         XCTAssertEqual(store2.bookmarks[0].name, "Persisted")
     }
 
     func testBookmarkWithNoteID() {
-        let store = BookmarkStore()
+        let store = makeStore()
         let noteID = UUID()
         let bookmark = Bookmark(name: "Note BM", searchQuery: "q", noteID: noteID)
         store.add(bookmark)
@@ -70,7 +84,7 @@ final class BookmarkStoreTests: XCTestCase {
     }
 
     func testReorder() {
-        let store = BookmarkStore()
+        let store = makeStore()
         store.add(Bookmark(name: "A", searchQuery: "a"))
         store.add(Bookmark(name: "B", searchQuery: "b"))
         store.add(Bookmark(name: "C", searchQuery: "c"))

@@ -10,7 +10,12 @@ final class NoteStoreTests: XCTestCase {
         tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         storage = FileStorageService(notesDirectory: tempDir)
-        store = NoteStore(storage: storage)
+        // Give this NoteStore its own WAL directory instead of the default
+        // CrashRecoveryService's fixed shared path -- under
+        // `swift test --parallel` multiple test processes writing/truncating
+        // the same WAL file race each other.
+        let crashRecovery = CrashRecoveryService(cacheDirectory: tempDir.appendingPathComponent("wal-cache"))
+        store = NoteStore(storage: storage, crashRecovery: crashRecovery)
     }
 
     override func tearDown() async throws {
