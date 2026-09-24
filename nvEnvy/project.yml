@@ -36,6 +36,12 @@ targetTemplates:
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 Kendall Miller. Made at Lunt.co. Released under the MIT License."
         SWIFT_VERSION: "5.9"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
+        # Without a team, automatic signing has nothing to match a provisioning
+        # profile against, so Xcode silently shows none for either macOS target
+        # and an App Store archive can't be signed. The iOS target has carried
+        # these since it was added; the macOS ones never did.
+        DEVELOPMENT_TEAM: B35T5FY8RZ
+        CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: nvEnvy/nvEnvy.entitlements
         ARCHS: "$(ARCHS_STANDARD)"
         ENABLE_HARDENED_RUNTIME: YES

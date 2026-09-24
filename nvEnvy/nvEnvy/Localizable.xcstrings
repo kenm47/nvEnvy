@@ -36,9 +36,6 @@
     "• [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) — global hotkeys" : {
 
     },
-    "• [Sparkle](https://sparkle-project.org) — auto-update" : {
-
-    },
     "• [swift-markdown](https://github.com/apple/swift-markdown) — Markdown rendering" : {
 
     },
@@ -227,6 +224,7 @@
       }
     },
     "Check for Updates..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
