@@ -3,6 +3,7 @@ import SwiftUI
 struct SearchField: View {
     @Binding var query: String
     var onReturn: () -> Void
+    var onForceCreate: () -> Void = {}
     var onEscape: () -> Void
     var onDownArrow: () -> Void = {}
     @FocusState private var isFocused: Bool
@@ -15,6 +16,11 @@ struct SearchField: View {
             TextField(String(localized: "Search or Create"), text: $query)
                 .textFieldStyle(.plain)
                 .focused($isFocused)
+                .onKeyPress(.return, phases: .down) { press in
+                    guard press.modifiers.contains(.command) else { return .ignored }
+                    onForceCreate()
+                    return .handled
+                }
                 .onSubmit { onReturn() }
                 .onKeyPress(.escape) {
                     onEscape()

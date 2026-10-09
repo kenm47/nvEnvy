@@ -45,6 +45,12 @@ struct MainView: View {
                             appState.createOrSelectNote()
                         }
                     },
+                    onForceCreate: {
+                        // Cmd+Return: create even when a longer title starts with the query.
+                        if !appState.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            appState.createOrSelectNote(allowPrefixMatch: false)
+                        }
+                    },
                     onEscape: {
                         appState.clearSearch()
                     },
