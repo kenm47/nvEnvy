@@ -302,6 +302,142 @@ final class NotesViewModelTests: XCTestCase {
         vm.filteredNotes = notes
     }
 
+    // MARK: - Live preview (autoSelectTitleMatch)
+
+    private func search(_ query: String) async throws {
+        vm.searchQuery = query
+        try await Task.sleep(for: .milliseconds(300))
+    }
+
+    func testAutoSelect_prefixMatch_selectsWithoutCommitting() async throws {
+        let shopping = Note(title: "Shopping List")
+        seedAllNotes([shopping, Note(title: "Meeting")])
+        vm.autoSelectTitleMatch = true
+        var committed = false
+        vm.onNoteCommitted = { _ in committed = true }
+        let before = shopping.modifiedDate
+        try await search("Sho")
+        XCTAssertEqual(vm.selectedNoteID, shopping.id)
+        XCTAssertFalse(committed)
+        XCTAssertTrue(vm.snapbackStack.isEmpty)
+        XCTAssertEqual(shopping.modifiedDate, before)
+    }
+
+    func testAutoSelect_exactMatch() async throws {
+        let meeting = Note(title: "Meeting")
+        seedAllNotes([Note(title: "Shopping List"), meeting])
+        vm.autoSelectTitleMatch = true
+        try await search("Meeting")
+        XCTAssertEqual(vm.selectedNoteID, meeting.id)
+    }
+
+    func testAutoSelect_prefersBestPrefixAndAgreesWithReturn() async throws {
+        let shop = Note(title: "Shop")
+        seedAllNotes([Note(title: "Shopping List"), shop])
+        vm.autoSelectTitleMatch = true
+        try await search("Sho")
+        XCTAssertEqual(vm.selectedNoteID, shop.id)
+        vm.selectedNoteID = nil
+        vm.createOrSelectNote()
+        XCTAssertEqual(vm.selectedNoteID, shop.id)
+    }
+
+    func testAutoSelect_substringOrBodyTopResult_doesNotSelect() async throws {
+        seedAllNotes([Note(title: "Grocery Shopping"), Note(title: "Other", body: "shop")])
+        vm.autoSelectTitleMatch = true
+        try await search("shop")
+        XCTAssertNil(vm.selectedNoteID)
+    }
+
+    func testAutoSelect_disabled_doesNotSelect() async throws {
+        seedAllNotes([Note(title: "Shopping List")])
+        vm.autoSelectTitleMatch = false
+        try await search("Sho")
+        XCTAssertNil(vm.selectedNoteID)
+    }
+
+    func testAutoSelect_emptyQuery_clearsAutoSelectionAndSelectsNothing() async throws {
+        seedAllNotes([Note(title: "Shopping List"), Note(title: "Meeting")])
+        vm.autoSelectTitleMatch = true
+        try await search("Sho")
+        XCTAssertNotNil(vm.selectedNoteID)
+        try await search("")
+        XCTAssertNil(vm.selectedNoteID)
+    }
+
+    func testAutoSelect_followsNarrowingQuery() async throws {
+        let shopping = Note(title: "Shopping List")
+        let show = Note(title: "Show Notes")
+        seedAllNotes([shopping, show])
+        vm.autoSelectTitleMatch = true
+        try await search("Sho")
+        try await search("Shopp")
+        XCTAssertEqual(vm.selectedNoteID, shopping.id)
+        try await search("Show")
+        XCTAssertEqual(vm.selectedNoteID, show.id)
+    }
+
+    func testAutoSelect_staleAutoSelection_clearsWhenNothingMatches() async throws {
+        seedAllNotes([Note(title: "Shopping List")])
+        vm.autoSelectTitleMatch = true
+        try await search("Sho")
+        try await search("Shx")
+        XCTAssertNil(vm.selectedNoteID)
+        XCTAssertNil(vm.autoSelectedNoteID)
+    }
+
+    func testAutoSelect_userSelectionWinsAndResumesAfterClear() async throws {
+        let a = Note(title: "Shopping List")
+        let b = Note(title: "Other")
+        seedAllNotes([a, b])
+        vm.autoSelectTitleMatch = true
+        try await search("Sho")
+        XCTAssertEqual(vm.selectedNoteID, a.id)
+        vm.selectedNoteID = b.id
+        try await search("Shop")
+        XCTAssertEqual(vm.selectedNoteID, b.id)
+        try await search("Zzz")
+        XCTAssertEqual(vm.selectedNoteID, b.id, "a hand-picked note is never cleared")
+
+        vm.selectedNoteID = nil
+        vm.clearSearch()
+        try await Task.sleep(for: .milliseconds(100))
+        try await search("Sho")
+        XCTAssertEqual(vm.selectedNoteID, a.id)
+    }
+
+    func testAutoSelect_tagFilterGate() async throws {
+        seedAllNotes([Note(title: "Shopping List", tags: ["work"])])
+        vm.autoSelectTitleMatch = true
+        vm.tagFilter = "work"
+        try await search("Sho")
+        XCTAssertNil(vm.selectedNoteID)
+    }
+
+    func testAutoSelect_staleResultDropped() async throws {
+        seedAllNotes([Note(title: "Shopping List")])
+        vm.autoSelectTitleMatch = true
+        vm.searchQuery = "Sho"
+        vm.searchQuery = "Zzz"
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertNil(vm.selectedNoteID)
+    }
+
+    func testAutoSelect_returnCommitsAndLaterNoMatchKeepsSelection() async throws {
+        let shopping = Note(title: "Shopping List")
+        seedAllNotes([shopping])
+        vm.autoSelectTitleMatch = true
+        var committed: UUID?
+        vm.onNoteCommitted = { committed = $0 }
+        try await search("Sho")
+        vm.createOrSelectNote()
+        XCTAssertEqual(committed, shopping.id)
+        XCTAssertEqual(vm.allNotes.count, 1)
+        XCTAssertNil(vm.autoSelectedNoteID)
+        try await search("Zzz")
+        XCTAssertEqual(vm.selectedNoteID, shopping.id)
+    }
+
     // MARK: - rebuildNotesByID() — duplicate-filename launch crash
 
     func testDuplicateFilenamesDoNotTrap() {

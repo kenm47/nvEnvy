@@ -82,7 +82,9 @@ public struct SearchEngine: Sendable {
         var sorted: [Note] = []
         sorted.reserveCapacity(tier0Exact.count + tier1Prefix.count + tier1Title.count + tier2Other.count)
         sorted.append(contentsOf: tier0Exact)
-        sorted.append(contentsOf: tier1Prefix)
+        // Order prefix matches the way Return picks one, so the top row is the
+        // note Return and the live preview open.
+        sorted.append(contentsOf: tier1Prefix.sorted { SearchEngine.isBetterPrefixMatch($0, than: $1) })
         sorted.append(contentsOf: tier1Title)
         sorted.append(contentsOf: tier2Other)
 

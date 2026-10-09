@@ -78,6 +78,17 @@ public final class NotesViewModel {
         }
     }
 
+    /// NV-style live preview: while typing, select the top result if its title
+    /// starts with the query so the editor shows it. Off by default; macOS sets
+    /// it from the autocomplete preference. iOS leaves it off because selection
+    /// navigates to the editor there.
+    public var autoSelectTitleMatch: Bool = false
+
+    /// The note the search itself selected. Auto-select only replaces or clears
+    /// a selection it made; once the user picks a note, this no longer matches
+    /// `selectedNoteID` and the user's choice is left alone.
+    private(set) var autoSelectedNoteID: Note.ID?
+
     public var tagFilter: String? {
         didSet {
             Task { @MainActor [weak self] in await self?.performSearch() }
@@ -197,11 +208,32 @@ public final class NotesViewModel {
         } else {
             filteredNotes = results
         }
+        applyAutoSelection()
+    }
+
+    private func applyAutoSelection() {
+        guard autoSelectTitleMatch else { return }
+        let owned = selectedNoteID == nil || selectedNoteID == autoSelectedNoteID
+        guard owned else { return }
+
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if tagFilter == nil, !query.isEmpty,
+           let top = filteredNotes.first, top.cachedLowercaseTitle.hasPrefix(query) {
+            selectedNoteID = top.id
+            autoSelectedNoteID = top.id
+        } else if selectedNoteID != nil && selectedNoteID == autoSelectedNoteID {
+            selectedNoteID = nil
+            autoSelectedNoteID = nil
+        }
     }
 
     public func clearSearch() {
         searchQuery = ""
         tagFilter = nil
+        if selectedNoteID != nil && selectedNoteID == autoSelectedNoteID {
+            selectedNoteID = nil
+        }
+        autoSelectedNoteID = nil
         // The `searchQuery` didSet just scheduled a debounced search; cancel it
         // and run the (empty-query) search immediately so the list clears now.
         searchDebounceTask?.cancel()
@@ -218,6 +250,7 @@ public final class NotesViewModel {
 
         let match = SearchEngine.exactTitleMatch(notes: allNotes, query: title)
             ?? (allowPrefixMatch ? SearchEngine.bestTitlePrefixMatch(notes: allNotes, query: title) : nil)
+        autoSelectedNoteID = nil
         if let match {
             filteredNotes = [match]
             selectedNoteID = match.id

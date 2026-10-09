@@ -123,7 +123,10 @@ public final class AppState {
         didSet { UserDefaults.standard.set(externalEditorPath, forKey: kExternalEditorPathKey) }
     }
     public var autocompleteEnabled: Bool {
-        didSet { UserDefaults.standard.set(autocompleteEnabled, forKey: kAutocompleteKey) }
+        didSet {
+            UserDefaults.standard.set(autocompleteEnabled, forKey: kAutocompleteKey)
+            notes.autoSelectTitleMatch = autocompleteEnabled
+        }
     }
     public var showDockIcon: Bool {
         didSet {
@@ -384,7 +387,7 @@ public final class AppState {
         self.colorScheme = ColorScheme(rawValue: ud.integer(forKey: kColorSchemeKey)) ?? .custom
         self.confirmDeletion = ud.object(forKey: kConfirmDeletionKey) as? Bool ?? true
         self.externalEditorPath = ud.string(forKey: kExternalEditorPathKey)
-        self.autocompleteEnabled = ud.object(forKey: kAutocompleteKey) as? Bool ?? false
+        self.autocompleteEnabled = ud.object(forKey: kAutocompleteKey) as? Bool ?? true
         self.showDockIcon = ud.object(forKey: kShowDockIconKey) as? Bool ?? true
         self.noteListDisplayMode = NoteListDisplayMode(rawValue: ud.integer(forKey: kNoteListDisplayModeKey)) ?? .standard
         self.layoutOrientation = LayoutOrientation(rawValue: ud.integer(forKey: kLayoutOrientationKey)) ?? .horizontal
@@ -417,6 +420,7 @@ public final class AppState {
         notes.sortField = sortField
         notes.sortAscending = sortAscending
         notes.allowedExtensions = allowedExtensions
+        notes.autoSelectTitleMatch = autocompleteEnabled
 
         // Hooks: macOS-side reactions to VM events.
         notes.onTagsChanged = { [weak self] note in

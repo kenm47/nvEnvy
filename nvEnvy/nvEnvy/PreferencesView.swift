@@ -35,6 +35,9 @@ struct GeneralPreferencesView: View {
         Form {
             Section("Search") {
                 Toggle("Autocomplete note titles", isOn: $appState.autocompleteEnabled)
+                Text("Shows the best title match in the editor as you type. Return opens the best match either way.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Global Hotkey") {
