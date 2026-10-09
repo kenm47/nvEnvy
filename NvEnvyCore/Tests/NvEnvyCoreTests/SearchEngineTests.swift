@@ -118,29 +118,66 @@ final class SearchEngineTests: XCTestCase {
         XCTAssertEqual(results[0].title, "Note A")
     }
 
-    func testAutocompleteTitlePrefix() {
+    func testBestTitlePrefixMatch_prefersShortestTitle() {
         let notes = [
             Note(title: "Apple Pie Recipe"),
             Note(title: "Banana Split"),
-            Note(title: "Application Notes"),
+            Note(title: "Apple Pie"),
         ]
-        let match = SearchEngine.autocompleteTitlePrefix(notes: notes, query: "app")
-        XCTAssertNotNil(match)
-        XCTAssertTrue(match!.title.lowercased().hasPrefix("app"))
+        let match = SearchEngine.bestTitlePrefixMatch(notes: notes, query: "app")
+        XCTAssertEqual(match?.title, "Apple Pie")
     }
 
-    func testAutocompleteTitlePrefixNoMatch() {
-        let notes = [
-            Note(title: "Banana Split"),
-        ]
-        let match = SearchEngine.autocompleteTitlePrefix(notes: notes, query: "app")
-        XCTAssertNil(match)
+    func testBestTitlePrefixMatch_tieBreaksByModifiedDateThenAlphabetical() {
+        let old = Date(timeIntervalSince1970: 1000)
+        let new = Date(timeIntervalSince1970: 2000)
+        let a = Note(title: "Shop B", modifiedDate: old)
+        let b = Note(title: "Shop A", modifiedDate: new)
+        XCTAssertEqual(SearchEngine.bestTitlePrefixMatch(notes: [a, b], query: "sho")?.title, "Shop A")
+        XCTAssertEqual(SearchEngine.bestTitlePrefixMatch(notes: [b, a], query: "sho")?.title, "Shop A")
+
+        let c = Note(title: "Shop B", modifiedDate: new)
+        XCTAssertEqual(SearchEngine.bestTitlePrefixMatch(notes: [c, b], query: "sho")?.title, "Shop A")
+        XCTAssertEqual(SearchEngine.bestTitlePrefixMatch(notes: [b, c], query: "sho")?.title, "Shop A")
     }
 
-    func testAutocompleteTitlePrefixEmpty() {
+    func testBestTitlePrefixMatch_isCaseInsensitive() {
+        let notes = [Note(title: "Shopping List")]
+        XCTAssertNotNil(SearchEngine.bestTitlePrefixMatch(notes: notes, query: "SHO"))
+    }
+
+    func testBestTitlePrefixMatchNoMatch() {
+        let notes = [Note(title: "Banana Split")]
+        XCTAssertNil(SearchEngine.bestTitlePrefixMatch(notes: notes, query: "app"))
+    }
+
+    func testBestTitlePrefixMatchEmpty() {
         let notes = [Note(title: "Test")]
-        let match = SearchEngine.autocompleteTitlePrefix(notes: notes, query: "")
-        XCTAssertNil(match)
+        XCTAssertNil(SearchEngine.bestTitlePrefixMatch(notes: notes, query: ""))
+    }
+
+    func testRanking_prefixThenSubstringThenBody() {
+        let body = Note(title: "Zeta", body: "mentions shop here")
+        let substring = Note(title: "Grocery Shopping")
+        let prefix = Note(title: "Shopping List")
+        let exact = Note(title: "Shop")
+        let results = engine.filter(notes: [body, substring, prefix, exact], query: "shop")
+        XCTAssertEqual(results.map(\.title), ["Shop", "Shopping List", "Grocery Shopping", "Zeta"])
+    }
+
+    func testRanking_incrementalMatchesColdSearch() {
+        let notes = [
+            Note(title: "Grocery Shopping"),
+            Note(title: "Shopping List"),
+            Note(title: "Shop"),
+            Note(title: "Other", body: "shop"),
+        ]
+        _ = engine.filter(notes: notes, query: "s")
+        _ = engine.filter(notes: notes, query: "sh")
+        _ = engine.filter(notes: notes, query: "s")
+        let retyped = engine.filter(notes: notes, query: "sho")
+        var cold = SearchEngine()
+        XCTAssertEqual(retyped.map(\.id), cold.filter(notes: notes, query: "sho").map(\.id))
     }
 
     func testPerformanceAt1KNotes() {

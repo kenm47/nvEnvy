@@ -64,6 +64,53 @@ final class NotesViewModelTests: XCTestCase {
         XCTAssertEqual(vm.selectedNoteID, target.id)
     }
 
+    func testCreateOrSelect_prefixMatch_selectsBestMatchAndCreatesNothing() {
+        let shopping = Note(title: "Shopping List")
+        let show = Note(title: "Show Notes")
+        seedAllNotes([show, shopping])
+        vm.searchQuery = "Sho"
+        var committed: UUID?
+        vm.onNoteCommitted = { committed = $0 }
+        vm.createOrSelectNote()
+        XCTAssertEqual(vm.selectedNoteID, show.id, "shortest title wins")
+        XCTAssertEqual(committed, show.id)
+        XCTAssertEqual(vm.allNotes.count, 2)
+        XCTAssertEqual(vm.searchQuery, "Sho")
+    }
+
+    func testCreateOrSelect_exactMatchBeatsLongerPrefixMatch() {
+        let shop = Note(title: "Shop")
+        seedAllNotes([Note(title: "Shopping List"), shop])
+        vm.searchQuery = "Shop"
+        vm.createOrSelectNote()
+        XCTAssertEqual(vm.selectedNoteID, shop.id)
+    }
+
+    func testCreateOrSelect_prefixMatch_isCaseInsensitiveAndTrimmed() {
+        let target = Note(title: "Shopping List")
+        seedAllNotes([target])
+        vm.searchQuery = "  sho \n"
+        vm.createOrSelectNote()
+        XCTAssertEqual(vm.selectedNoteID, target.id)
+        XCTAssertEqual(vm.allNotes.count, 1)
+    }
+
+    func testCreateOrSelect_allowPrefixMatchFalse_doesNotSelectPrefixMatch() {
+        seedAllNotes([Note(title: "Shopping List")])
+        vm.searchQuery = "Sho"
+        vm.createOrSelectNote(allowPrefixMatch: false)
+        // Falls through to the create path (no store attached here, so nothing lands).
+        XCTAssertNil(vm.selectedNoteID)
+    }
+
+    func testCreateOrSelect_allowPrefixMatchFalse_stillSelectsExactMatch() {
+        let target = Note(title: "Shop")
+        seedAllNotes([target, Note(title: "Shopping List")])
+        vm.searchQuery = "Shop"
+        vm.createOrSelectNote(allowPrefixMatch: false)
+        XCTAssertEqual(vm.selectedNoteID, target.id)
+    }
+
     func testCreateOrSelect_noMatchButNoStore_doesNotCrashAndDoesNotSelect() {
         // No noteStore attached: the no-match path enters the Task block
         // but the `guard let store = noteStore` short-circuits. The view model

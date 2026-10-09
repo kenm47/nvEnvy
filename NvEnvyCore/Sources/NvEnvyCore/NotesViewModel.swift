@@ -208,11 +208,17 @@ public final class NotesViewModel {
         Task { @MainActor [weak self] in await self?.performSearch() }
     }
 
-    public func createOrSelectNote() {
+    /// Return in the search field: opens the exact title match, else the best
+    /// title-prefix match (NV-style), else creates a note titled with the query.
+    /// Pass `allowPrefixMatch: false` from explicit "Create" affordances so the
+    /// user can still create a note whose title prefixes an existing one.
+    public func createOrSelectNote(allowPrefixMatch: Bool = true) {
         let title = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return }
 
-        if let match = SearchEngine.exactTitleMatch(notes: allNotes, query: title) {
+        let match = SearchEngine.exactTitleMatch(notes: allNotes, query: title)
+            ?? (allowPrefixMatch ? SearchEngine.bestTitlePrefixMatch(notes: allNotes, query: title) : nil)
+        if let match {
             filteredNotes = [match]
             selectedNoteID = match.id
             onNoteCommitted?(match.id)

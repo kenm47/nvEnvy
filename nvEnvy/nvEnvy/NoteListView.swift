@@ -24,7 +24,7 @@ struct NoteListView: View {
                         Text("No results found")
                             .foregroundStyle(.secondary)
                         Button("Create \"\(appState.searchQuery)\"") {
-                            appState.createOrSelectNote()
+                            appState.createOrSelectNote(allowPrefixMatch: false)
                         }
                         .buttonStyle(.bordered)
                     } else {
@@ -42,7 +42,7 @@ struct NoteListView: View {
                     List(selection: $selectedNoteID) {
                         if showCreateRow {
                             Button {
-                                appState.createOrSelectNote()
+                                appState.createOrSelectNote(allowPrefixMatch: false)
                             } label: {
                                 HStack {
                                     Image(systemName: "plus.circle.fill")

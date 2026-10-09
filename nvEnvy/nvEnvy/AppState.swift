@@ -550,7 +550,7 @@ public final class AppState {
     // MARK: - Search / CRUD passthroughs
 
     public func clearSearch() { notes.clearSearch() }
-    public func createOrSelectNote() { notes.createOrSelectNote() }
+    public func createOrSelectNote(allowPrefixMatch: Bool = true) { notes.createOrSelectNote(allowPrefixMatch: allowPrefixMatch) }
     public func note(for id: UUID) -> Note? { notes.note(for: id) }
     public func updateNoteBody(noteID: UUID, body: String) {
         notes.updateNoteBody(noteID: noteID, body: body)

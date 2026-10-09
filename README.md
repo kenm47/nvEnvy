@@ -19,7 +19,7 @@ Requires macOS 14 Sonoma or later. Universal (Apple Silicon + Intel).
 
 ## Features
 
-- **Instant search** — Type to search, Return to create. Incremental filtering with phrase search support.
+- **Instant search** — Type to search, Return to open the best title match (exact, then title prefix) or create a note if nothing matches. To create a note whose title prefixes an existing one, click the "Create ..." row. Incremental filtering with phrase search support.
 - **Plain-text Markdown** — Notes stored as plain `.md` files with YAML frontmatter for tags and dates.
 - **Keyboard-first** — Full keyboard navigation: ⌘L to search, ⌘J/K to navigate, Escape to go back.
 - **iCloud sync** — Drop your notes folder in iCloud Drive for seamless sync with conflict resolution.
@@ -40,7 +40,7 @@ Requires macOS 14 Sonoma or later. Universal (Apple Silicon + Intel).
 | Shortcut | Action |
 |----------|--------|
 | ⌘L | Focus search field |
-| Return | Create or select note |
+| Return | Open best title match, or create note |
 | Escape | Return to search |
 | ⌘J / ⌘K | Next / Previous note |
 | ⌘D | Deselect (or snapback) |

@@ -25,7 +25,7 @@ struct NoteListView: View {
         List(selection: $vm.selectedNoteID) {
             if showCreateRow {
                 Button {
-                    notesVM.createOrSelectNote()
+                    notesVM.createOrSelectNote(allowPrefixMatch: false)
                 } label: {
                     HStack {
                         Image(systemName: "plus.circle.fill")
