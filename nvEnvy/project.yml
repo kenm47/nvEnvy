@@ -30,8 +30,8 @@ targetTemplates:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nvenvy.app
-        MARKETING_VERSION: "1.3.0"
-        CURRENT_PROJECT_VERSION: "4"
+        MARKETING_VERSION: "1.3.1"
+        CURRENT_PROJECT_VERSION: "5"
         INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.productivity"
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 Kendall Miller. Made at Lunt.co. Released under the MIT License."
         SWIFT_VERSION: "5.9"
@@ -63,8 +63,8 @@ targets:
       path: nvEnvy/Info.plist
       properties:
         ATSApplicationFontsPath: Fonts
-        CFBundleShortVersionString: "1.3.0"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "1.3.1"
+        CFBundleVersion: "5"
         NSAppleScriptEnabled: true
         OSAScriptingDefinition: nvEnvy.sdef
         NSServices:
@@ -134,8 +134,8 @@ targets:
       path: nvEnvy/Info-MAS.plist
       properties:
         ATSApplicationFontsPath: Fonts
-        CFBundleShortVersionString: "1.3.0"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "1.3.1"
+        CFBundleVersion: "5"
         ITSAppUsesNonExemptEncryption: false
         NSAppleScriptEnabled: true
         OSAScriptingDefinition: nvEnvy.sdef
@@ -197,8 +197,8 @@ targets:
     info:
       path: nvEnvyiOS/Info.plist
       properties:
-        CFBundleShortVersionString: "1.3.0"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "1.3.1"
+        CFBundleVersion: "5"
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
@@ -236,8 +236,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nvenvy.app.ios
-        MARKETING_VERSION: "1.3.0"
-        CURRENT_PROJECT_VERSION: "4"
+        MARKETING_VERSION: "1.3.1"
+        CURRENT_PROJECT_VERSION: "5"
         SWIFT_VERSION: "5.9"
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         TARGETED_DEVICE_FAMILY: "1,2"
